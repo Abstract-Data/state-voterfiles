@@ -19,7 +19,7 @@ class ResultOptions:
 
     @property
     def _dtypes(self) -> dict:
-        return {k: v.__class__.__name__ for r in ResultOptions.result for k, v in r.items()}
+        return {k: v.__class__.__name__ for r in self.result for k, v in r.items()}
 
     @property
     def pandas_types(self):

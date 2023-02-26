@@ -1,10 +1,10 @@
 from pathlib import Path
 import csv
 from dataclasses import dataclass, field
-from typing import List, Dict, ClassVar, Type, Generator
+from typing import List, Dict, ClassVar, Type, Generator, Callable
 from app.conf.config import CampaignFinanceConfig
 from pydantic import ValidationError
-from app.conf.tec_postgres import SessionLocal, sessionmaker
+from app.conf.tec_postgres import SessionLocal, sessionmaker, Base, engine
 import os
 import sys
 from tqdm import tqdm
@@ -27,6 +27,7 @@ EXPENSE_FILE_COLUMNS = set()
 CONTRIBUTION_FILE_COLUMNS = set()
 
 RecordValidation = namedtuple('RecordValidation', ['passed', 'failed'])
+FileDetails = namedtuple('FileDetails', ['fileName', 'fileRecord'])
 
 
 def uppercase(series: pd.Series) -> pd.Series:
@@ -64,7 +65,7 @@ class TECFolderLoader:
 
     @property
     def folder(self) -> Path:
-        fldr = Path.cwd()
+        fldr = Path.cwd().parent.parent
         tmp = fldr / 'tmp'
         return tmp
 
@@ -189,25 +190,28 @@ class TECFileReader:
     @staticmethod
     def read(file) -> Generator[Dict[str, str], None, None]:
         opn = open(file['file'], 'r')
-        for _record in tqdm(csv.DictReader(opn), desc=f'Reading {file["name"]}', unit=' records'):
+        for _record in csv.DictReader(opn):
             r = TECRecord(_record)
             yield r
 
     @staticmethod
     def read_files(file_list: Generator[Dict[str, Path], None, None]) -> Generator[TECRecord, None, None]:
         for file in file_list:
-            reader = TECFileReader.read(file)
-            for _record in reader:
-                yield _record
+            reader = FileDetails(file['name'], TECFileReader.read(file))
+            yield reader
 
     @staticmethod
-    def load_records(list_name: Generator) -> Dict[int, Dict[str, str]]:
-        def records():
-            for file in list_name:
-                for _record in file:
-                    yield TECRecord(_record, file.category)
-        _records = records()
-        return {i: record for i, record in enumerate(_records)}
+    def load_records(list_name: CampaignFinanceConfig.RECORD_CATEGORY_TUPLE) -> List[TECRecord]:
+        records = {}
+        for each in list_name.records:
+            records[each.fileName] = [i for i in each.fileRecord]
+        return [
+            each for record in records.values() for each in tqdm(
+                record,
+                desc=f'Loading Records {list_name.name}',
+                unit=' records'
+            )
+        ]
 
     def __post_init__(self):
         self.path: Path = field(default_factory=Path)
@@ -286,40 +290,50 @@ class TECRecordValidation:
     ===================
     This class is used to validate the TEC campaign finance data.
     """
-    file: TECFileReader.category
-    passed: List[Dict] = field(init=False)
-    failed: List[str] = field(init=False)
+    fileReaderCategory: TECFileReader.category
+    passed: Dict = field(init=False)
+    failed: Dict = field(init=False)
     _record_cateogry: str = field(init=False)
     _record_types: Dict[str, str] = field(init=False)
 
     @property
-    def records(self):
-        return self.file.records
+    def records(self) -> Generator[TECRecord, None, None]:
+        for _record in self.fileReaderCategory.records:
+            yield _record
 
     @property
     def record_category(self):
-        return self.file.name
+        return self.fileReaderCategory.name
 
-    def validate(self, load_to_sql: bool = False) -> [List[Dict], List[Dict]]:
-        self.passed, self.failed = [], []
+    def validate(self, load_to_sql: bool = False) -> [Dict, Dict]:
+        self.passed, self.failed = {}, {}
         _sql_queue, _sql_queue_count = [], 0
-        for _record in self.records:
-            try:
-                _record.validate_record()
-                self.passed.append(_record.validator.dict())
-                if load_to_sql:
-                    _record.create_sql_model()
-                    _sql_queue.append(_record.sql_model)
-                    if len(_sql_queue) == 50000:
-                        self.sql_loader(_sql_queue)
-                        _sql_queue_count += len(_sql_queue)
-                        print("\r" + f"Loaded {_sql_queue_count:,} records to SQL")
-                        _sql_queue = []
+        for each_file in self.fileReaderCategory.records:
+            _passed, _failed = {}, {}
+            for each_record in tqdm(each_file.fileRecord, desc=f'Validating {each_file.fileName}', unit=' records'):
+                _file_name = each_file.fileName
+                try:
+                    each_record.validate_record()
+                    self.passed.update({_file_name: each_record.validator.dict()})
+                    if load_to_sql:
+                        each_record.create_sql_model()
+                        _sql_queue.append(each_record.sql_model)
+                        if len(_sql_queue) == 50000:
+                            self.sql_loader(_sql_queue)
+                            _sql_queue_count += len(_sql_queue)
+                            print("\r" + f"Loaded {_sql_queue_count:,} records to SQL")
+                            _sql_queue = []
 
-            except ValidationError as e:
-                errors = e.json()
-                self.failed.append({'errors': errors,
-                                    'record': _record})
+                except ValidationError as e:
+                    errors = e.json()
+                    self.failed.update(
+                        {
+                            _file_name: {
+                                'errors': errors,
+                                'record': each_record
+                            }
+                        }
+                    )
         if load_to_sql:
             self.sql_loader(_sql_queue)
             _sql_queue_count += len(_sql_queue)
@@ -362,11 +376,17 @@ class TECRecordValidation:
             db.commit()
 
 
-if __name__ == '__main__':
-    files = TECFileReader()
-    expenses = TECRecordValidation(files.expenses)
-    contributions = TECRecordValidation(files.contributions)
+files = TECFileReader()
+expenses = TECRecordValidation(files.expenses)
+expenses.validate()
+contributions = TECRecordValidation(files.contributions)
 
-# Base.metadata.create_all(bind=engine)
-# expenses.validate(load_to_sql=True)
+Base.metadata.create_all(bind=engine)
+# expenses.validate()
+
 # contributions.validate(load_to_sql=True)
+
+# if __name__ == '__main__':
+#     files = TECFileReader()
+#     expenses = TECRecordValidation(files.expenses)
+#     contributions = TECRecordValidation(files.contributions)

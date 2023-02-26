@@ -19,6 +19,38 @@ PersonName = namedtuple(
     ]
 )
 
+FilerCorporationColumns = namedtuple(
+    'CorporationNameColumns',
+    [
+        'name',
+        'nameFormatted'
+    ]
+)
+
+FilerPersonColumns = namedtuple(
+    'FilerPersonColumns',
+    [
+        'name',
+        'nameFormatted'
+    ]
+)
+
+filer_name_cols = PersonName(
+    title='filerTitle',
+    firstname='filerFirstName',
+    lastname='filerLastName',
+    middlename='filerMiddleName',
+    suffix='filerSuffix',
+    prefix='filerPrefix',
+    formatted=None,
+    deceased=None
+)
+
+filer_corporation_cols = FilerCorporationColumns('filerCompanyName', 'filerCompanyNameFormatted')
+filer_person_cols = FilerPersonColumns('filerName', 'filerNameFormatted')
+
+payee_corporation_cols = FilerCorporationColumns('payeeCompanyName', 'payeeCompanyNameFormatted')
+
 
 def format_dates(v):
     if v:
@@ -61,80 +93,165 @@ def phone_validator(phone):
         return None
 
 
-def name_parser(
-        key_to_parse: str) -> PersonName:
-    filer_name = key_to_parse
-    if filer_name:
-        details = pp.parse(filer_name)
+def assign_to_name_cols(v: dict, to_parse, col_names=filer_name_cols):
+    _split = HumanName(to_parse)
+    v[col_names.title] = _split.title
+    v[col_names.firstname] = _split.first
+    v[col_names.lastname] = _split.last
+    v[col_names.middlename] = None if not _split.middle else strip_punctuation(_split.middle)
+    v[col_names.suffix] = None if not _split.suffix else strip_punctuation(_split.suffix).replace('.', '')
+    return v
 
-        if 'GivenName' in [x[1] for x in details]:
-            pfx = re.findall(r"(?<=\()(.*?)(?=\))", filer_name)
 
-            if 'DECEASED' in pfx:
-                name_deceased = True
-                pfx.pop(pfx.index('DECEASED'))
-            else:
-                name_deceased = False
+def corporation_parser(v: dict, name_to_parse, corp_cols: FilerCorporationColumns = filer_corporation_cols):
+    details = pp.parse(name_to_parse)
+    companyname = strip_nonwhitespace(
+        ' '.join([x[0] for x in details if x[1] == 'CorporationName'])
+    )
+    andcompany = strip_nonwhitespace(
+        ' '.join([x[0] for x in details if x[1] == 'CorporationNameAndCompany'])
+    )
+    legaltype = strip_nonwhitespace(
+        ' '.join([x[0] for x in details if x[1] == 'CorporationLegalType'])
+    )
 
-            person_split = HumanName(filer_name)
-            name_title = person_split.title
-            name_first = person_split.first
-            name_last = person_split.last
-            name_middle = strip_punctuation(
-                person_split.middle
-            ) if person_split.middle else None
-            name_suffix = strip_punctuation(
-                person_split.suffix
-            ).replace('.', '') if person_split.suffix else None
+    if all([companyname, andcompany, legaltype]):
+        v[corp_cols.name] = strip_nonwhitespace(
+            ' '.join([companyname, andcompany])
+        )
+        v[corp_cols.nameFormatted] = strip_nonwhitespace(
+            ' '.join([companyname, andcompany, legaltype])
+        )
+    elif all([companyname, andcompany]):
+        v[corp_cols.name] = strip_nonwhitespace(
+            ' '.join([companyname, andcompany])
+        )
+        v[corp_cols.nameFormatted] = strip_nonwhitespace(
+            ' '.join([companyname, andcompany])
+        )
+    elif all([companyname, legaltype]):
+        v[corp_cols.name] = companyname
+        v[corp_cols.nameFormatted] = strip_nonwhitespace(
+            ' '.join([companyname, legaltype])
+        )
+    elif companyname:
+        v[corp_cols.name] = companyname
+        v[corp_cols.nameFormatted] = companyname
 
-            if person_split.nickname or pfx:
-                pfx = ' '.join(pfx)
-                name_fmt = strip_nonwhitespace(' '.join(
-                    [
-                        pfx,
-                        person_split.first,
-                        person_split.middle,
-                        person_split.last
-                    ]
-                ))
-            elif person_split.title:
-                pfx = person_split.title
-                name_fmt = strip_nonwhitespace(
-                    ' '.join(
-                        [
-                            person_split.title,
-                            person_split.first,
-                            person_split.middle,
-                            person_split.last,
-                            person_split.suffix
-                        ]
-                    )
-                )
+    else:
+        v[corp_cols.name] = None
+        v[corp_cols.nameFormatted] = None
+    return v
 
-            else:
-                pfx = None
-                name_fmt = strip_nonwhitespace(
-                    ' '.join(
-                        [
-                            person_split.first,
-                            person_split.middle,
-                            person_split.last,
-                            person_split.suffix
-                        ]
-                    )
-                )
 
-            _name_prefix = strip_nonwhitespace(pfx).replace('.', '') if pfx else None
-            _name_formatted = strip_nonwhitespace(name_fmt.upper()) if name_fmt else None
-            _deceased = name_deceased if name_deceased else None
+def name_corporation_parser(
+        v: dict,
+        name_to_parse: str,
+        person_cols: PersonName = filer_name_cols,
+        corporation_cols: FilerCorporationColumns = filer_corporation_cols):
+    val = v
+    details = pp.parse(name_to_parse)  # Identify type of name
+    _split = HumanName(name_to_parse)
 
-            return PersonName(
-                title=name_title,
-                firstname=name_first,
-                lastname=name_last,
-                middlename=name_middle,
-                suffix=name_suffix,
-                prefix=_name_prefix,
-                formatted=_name_formatted,
-                deceased=name_deceased
+    if 'GivenName' in [x[1] for x in details]:
+        # Check for prefix details that parser may have trouble identifying
+        match = re.search(r"(?<=\()(.*?)(?=\))", name_to_parse)
+
+        # Split person name into parts
+        val = assign_to_name_cols(v=val, to_parse=name_to_parse, col_names=person_cols)
+
+        # Assign name parts to respective keys
+
+        if _split.nickname or match:
+            pfx = None if not match or _split.nickname else match.group() or _split.nickname
+            name_fmt = ' '.join(
+                [
+                    pfx,
+                    _split.first,
+                    _split.middle,
+                    _split.last
+                ]
             )
+        elif _split.title:
+            pfx = _split.title
+            name_fmt = ' '.join(
+                [
+                    _split.title,
+                    _split.first,
+                    _split.middle,
+                    _split.last,
+                    _split.suffix
+                ]
+            )
+
+        else:
+            pfx = None
+            name_fmt = ' '.join(
+                [
+                    _split.first,
+                    _split.middle,
+                    _split.last,
+                    _split.suffix
+                ]
+            )
+
+        val[person_cols.prefix] = strip_nonwhitespace(pfx).replace('.', '') if pfx else None
+        val[person_cols.formatted] = strip_nonwhitespace(name_fmt.upper()) if name_fmt else None
+
+    elif _split:
+        val = assign_to_name_cols(
+            v=val,
+            to_parse=name_to_parse,
+            col_names=person_cols
+        )
+
+        if _split.nickname == 'THE HONORABLE':
+            pfx = _split.nickname
+            name_fmt = strip_nonwhitespace(' '.join(
+                [
+                    pfx,
+                    _split.first,
+                    _split.middle,
+                    _split.last
+                ]
+            ))
+        elif _split.title:
+            pfx = _split.title
+            name_fmt = strip_nonwhitespace(
+                ' '.join(
+                    [
+                        _split.title,
+                        _split.first,
+                        _split.middle,
+                        _split.last,
+                        _split.suffix
+                    ]
+                )
+            )
+
+        else:
+            pfx = None
+            name_fmt = strip_nonwhitespace(
+                ' '.join(
+                    [
+                        _split.first,
+                        _split.middle,
+                        _split.last,
+                        _split.suffix
+                    ]
+                )
+            )
+
+        val[person_cols.prefix] = strip_nonwhitespace(pfx).replace('.', '') if pfx else None
+        val[person_cols.formatted] = strip_nonwhitespace(name_fmt.upper()) if name_fmt else None
+
+    elif 'CorporationName' in [x[1] for x in details]:
+        val = corporation_parser(
+            v=val,
+            name_to_parse=name_to_parse,
+            corp_cols=corporation_cols
+        )
+    else:
+        val[person_cols.formatted] = name_to_parse
+
+    return val
