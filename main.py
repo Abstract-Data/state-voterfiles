@@ -70,9 +70,10 @@ def export_to_csv(data_file, name: str):
 
 def sum_columns(df):
     df.loc['total', :] = df.sum(axis=0, numeric_only=True)
+    df['avg'] = df.mean(axis=1, numeric_only=True)
     # Set numeric columns to integers with thousands separator
     for col in df.columns:
-        if df[col].dtype == 'int64':
+        if df[col].dtype == 'float':
             df[col] = df[col].astype('int').map('{:,}'.format)
     return df
 
