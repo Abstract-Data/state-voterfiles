@@ -1,3 +1,3 @@
 *.txt
-/voter_files/*.txt
+**/voter_files/**.txt
 /voter_files/*.csv
