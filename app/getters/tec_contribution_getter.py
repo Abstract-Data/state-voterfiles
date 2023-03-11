@@ -44,6 +44,7 @@ class TECRecordGetter(BaseModel):
     payeeNameFirst: Optional[str]
     payeeNamePrefixCd: Optional[str]
     payeeNameShort: Optional[str]
+    payeeNameFormatted: Optional[str]
     payeeStreetAddr1: Optional[str]
     payeeStreetAddr2: Optional[str]
     payeeStreetCity: Optional[str]
@@ -66,6 +67,9 @@ class TECRecordGetter(BaseModel):
     contributorNameFirst: Optional[str]
     contributorNamePrefixCd: Optional[str]
     contributorNameShort: Optional[str]
+    contributorNameFormatted: Optional[str]
+    contributorCompanyName: Optional[str]
+    contributorCompanyNameFormatted: Optional[str]
     contributorStreetCity: Optional[str]
     contributorStreetStateCd: Optional[str]
     contributorStreetCountyCd: Optional[str]
@@ -85,7 +89,7 @@ class TECRecordGetter(BaseModel):
     # AbstractContributionHash: Optional[str]
     # AbstractExpenseHash: Optional[str]
     AbstractRecordUUID: UUID
-    AbstractRecordUpdateDt: datetime = datetime.now()
+    AbstractRecordUpdateDt: datetime
 
     class Config:
         orm_mode = True

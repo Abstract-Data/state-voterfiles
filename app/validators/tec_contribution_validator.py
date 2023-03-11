@@ -1,12 +1,9 @@
-from pydantic import BaseModel, validator, Field, root_validator
+from pydantic import BaseModel, validator, Field, root_validator, ValidationError
 from uuid import UUID
 from typing import Optional, Annotated
 from datetime import date, datetime
-import probablepeople as pp
-from nameparser import HumanName
-from app.funcs.record_key_generator import RecordKeyGenerator
-import re
 import app.funcs.validator_funcs as funcs
+from app.funcs.record_key_generator import RecordKeyGenerator
 
 
 class TECRecordValidator(BaseModel):
@@ -49,6 +46,7 @@ class TECRecordValidator(BaseModel):
     payeeNameFirst: Optional[str]
     payeeNamePrefixCd: Optional[str]
     payeeNameShort: Optional[str]
+    payeeNameFormatted: Optional[str]
     payeeStreetAddr1: Optional[str]
     payeeStreetAddr2: Optional[str]
     payeeStreetCity: Optional[str]
@@ -71,6 +69,9 @@ class TECRecordValidator(BaseModel):
     contributorNameFirst: Optional[str]
     contributorNamePrefixCd: Optional[str]
     contributorNameShort: Optional[str]
+    contributorNameFormatted: Optional[str]
+    contributorCompanyName: Optional[str]
+    contributorCompanyNameFormatted: Optional[str]
     contributorStreetCity: Optional[str]
     contributorStreetStateCd: Optional[str]
     contributorStreetCountyCd: Optional[str]
@@ -128,27 +129,217 @@ class TECRecordValidator(BaseModel):
                 values['contributorStreetPostalCode4'] = funcs.zip_validator(_contributor_zip)
         return values
 
-    @root_validator(pre=True)
-    @classmethod
-    def filername_parser(cls, values):
-        v = values
-        filer_name = v.get('filerName', None)
-        if filer_name:
-            v = funcs.name_corporation_parser(v, filer_name)
-        return v
+    # @root_validator(pre=True)
+    # @classmethod
+    # def filername_parser(cls, values):
+    #     filer_name = values.get('filerName', None)
+    #
+    #     if filer_name:
+    #         details = pp.parse(filer_name)
+    #         filer_type = details[1]
+    #
+    #         if 'GivenName' in filer_type:
+    #             pfx = re.search(r"(?<=\()(.*?)(?=\))", filer_name)
+    #             person_split = HumanName(filer_name)
+    #             values['filerTitle'] = person_split.title
+    #             values['filerFirstName'] = person_split.first
+    #             values['filerLastName'] = person_split.last
+    #             values['filerMiddleName'] = funcs.strip_punctuation(
+    #                 person_split.middle
+    #             ) if person_split.middle else None
+    #             values['filerSuffix'] = funcs.strip_punctuation(
+    #                 person_split.suffix
+    #             ).replace('.', '') if person_split.suffix else None
+    #
+    #             if person_split.nickname or pfx:
+    #                 pfx = pfx.group() if pfx else None
+    #                 name_fmt = funcs.strip_nonwhitespace(' '.join(
+    #                     [
+    #                         pfx,
+    #                         person_split.first,
+    #                         person_split.middle,
+    #                         person_split.last
+    #                     ]
+    #                 ))
+    #             elif person_split.title:
+    #                 pfx = person_split.title
+    #                 name_fmt = funcs.strip_nonwhitespace(
+    #                     ' '.join(
+    #                         [
+    #                             person_split.title,
+    #                             person_split.first,
+    #                             person_split.middle,
+    #                             person_split.last,
+    #                             person_split.suffix
+    #                         ]
+    #                     )
+    #                 )
+    #
+    #             else:
+    #                 pfx = None
+    #                 name_fmt = funcs.strip_nonwhitespace(
+    #                     ' '.join(
+    #                         [
+    #                             person_split.first,
+    #                             person_split.middle,
+    #                             person_split.last,
+    #                             person_split.suffix
+    #                         ]
+    #                     )
+    #                 )
+    #
+    #             values['filerPrefix'] = funcs.strip_nonwhitespace(pfx).replace('.', '') if pfx else None
+    #             values['filerNameFormatted'] = funcs.strip_nonwhitespace(name_fmt.upper()) if name_fmt else None
+    #
+    #         elif 'CorporationName' in [x[1] for x in details]:
+    #             companyname = funcs.strip_nonwhitespace(
+    #                 ' '.join([x[0] for x in details if x[1] == 'CorporationName'])
+    #             )
+    #             andcompany = funcs.strip_nonwhitespace(
+    #                 ' '.join([x[0] for x in details if x[1] == 'CorporationNameAndCompany'])
+    #             )
+    #             legaltype = funcs.strip_nonwhitespace(
+    #                 ' '.join([x[0] for x in details if x[1] == 'CorporationLegalType'])
+    #             )
+    #
+    #             if all([companyname, andcompany, legaltype]):
+    #                 values['filerCompanyName'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany])
+    #                 )
+    #                 values['filerCompanyNameFormatted'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany, legaltype])
+    #                 )
+    #             elif all([companyname, andcompany]):
+    #                 values['filerCompanyName'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany])
+    #                 )
+    #                 values['filerCompanyNameFormatted'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany])
+    #                 )
+    #             elif all([companyname, legaltype]):
+    #                 values['filerCompanyName'] = companyname
+    #                 values['filerCompanyNameFormatted'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, legaltype])
+    #                 )
+    #             elif companyname:
+    #                 values['filerCompanyName'] = companyname
+    #                 values['filerCompanyNameFormatted'] = companyname
+    #
+    #             else:
+    #                 values['filerCompanyName'] = None
+    #                 values['filerCompanyNameFormatted'] = None
+    #
+    #         else:
+    #             values['filerNameFormatted'] = filer_name
+    #
+    #     return values
 
-    @root_validator(pre=True)
-    @classmethod
-    def payeename_parser(cls, values):
-        v = values
-        payee_name = v.get('payeeNameOrganization', None)
-        if payee_name:
-            v = funcs.corporation_parser(
-                v=v,
-                name_to_parse=payee_name,
-                corp_cols=funcs.payee_corporation_cols,
-            )
-        return v
+    # @root_validator(pre=True)
+    # @classmethod
+    # def payeename_parser(cls, values):
+    #     payee_name = values.get('payeeNameOrganization', None)
+    #
+    #     if payee_name:
+    #         details = pp.parse(payee_name)
+    #         payee_type = details[1]
+    #
+    #         if 'GivenName' in payee_type:
+    #             pfx = re.search(r"(?<=\()(.*?)(?=\))", payee_name)
+    #             person_split = HumanName(payee_name)
+    #             values['filerTitle'] = person_split.title
+    #             values['filerFirstName'] = person_split.first
+    #             values['filerLastName'] = person_split.last
+    #             values['filerMiddleName'] = funcs.strip_punctuation(
+    #                 person_split.middle
+    #             ) if person_split.middle else None
+    #             values['filerSuffix'] = funcs.strip_punctuation(
+    #                 person_split.suffix
+    #             ).replace('.', '') if person_split.suffix else None
+    #
+    #             if person_split.nickname or pfx:
+    #                 pfx = pfx.group() if pfx else None
+    #                 name_fmt = funcs.strip_nonwhitespace(' '.join(
+    #                     [
+    #                         pfx,
+    #                         person_split.first,
+    #                         person_split.middle,
+    #                         person_split.last
+    #                     ]
+    #                 ))
+    #             elif person_split.title:
+    #                 pfx = person_split.title
+    #                 name_fmt = funcs.strip_nonwhitespace(
+    #                     ' '.join(
+    #                         [
+    #                             person_split.title,
+    #                             person_split.first,
+    #                             person_split.middle,
+    #                             person_split.last,
+    #                             person_split.suffix
+    #                         ]
+    #                     )
+    #                 )
+    #
+    #             else:
+    #                 pfx = None
+    #                 name_fmt = funcs.strip_nonwhitespace(
+    #                     ' '.join(
+    #                         [
+    #                             person_split.first,
+    #                             person_split.middle,
+    #                             person_split.last,
+    #                             person_split.suffix
+    #                         ]
+    #                     )
+    #                 )
+    #
+    #             values['filerPrefix'] = funcs.strip_nonwhitespace(pfx).replace('.', '') if pfx else None
+    #             values['filerNameFormatted'] = funcs.strip_nonwhitespace(name_fmt.upper()) if name_fmt else None
+    #
+    #         elif 'CorporationName' in [x[1] for x in details]:
+    #             companyname = funcs.strip_nonwhitespace(
+    #                 ' '.join([x[0] for x in details if x[1] == 'CorporationName'])
+    #             )
+    #             andcompany = funcs.strip_nonwhitespace(
+    #                 ' '.join([x[0] for x in details if x[1] == 'CorporationNameAndCompany'])
+    #             )
+    #             legaltype = funcs.strip_nonwhitespace(
+    #                 ' '.join([x[0] for x in details if x[1] == 'CorporationLegalType'])
+    #             )
+    #
+    #             if all([companyname, andcompany, legaltype]):
+    #                 values['filerCompanyName'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany])
+    #                 )
+    #                 values['filerCompanyNameFormatted'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany, legaltype])
+    #                 )
+    #             elif all([companyname, andcompany]):
+    #                 values['filerCompanyName'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany])
+    #                 )
+    #                 values['filerCompanyNameFormatted'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, andcompany])
+    #                 )
+    #             elif all([companyname, legaltype]):
+    #                 values['filerCompanyName'] = companyname
+    #                 values['filerCompanyNameFormatted'] = funcs.strip_nonwhitespace(
+    #                     ' '.join([companyname, legaltype])
+    #                 )
+    #             elif companyname:
+    #                 values['filerCompanyName'] = companyname
+    #                 values['filerCompanyNameFormatted'] = companyname
+    #
+    #             else:
+    #                 values['filerCompanyName'] = None
+    #                 values['filerCompanyNameFormatted'] = None
+    #
+    #         else:
+    #             values['filerNameFormatted'] = filer_name
+    #
+    #     return values
+
+        # return values
 
     # @root_validator(pre=True)
     # @classmethod
@@ -200,13 +391,19 @@ class TECRecordValidator(BaseModel):
     #         raise ValueError('AbstractRecordCategory must be either "expense" or "contribution"')
     #
     #     return values
+    @root_validator(pre=True)
+    @classmethod
+    def filer_parser(cls, values):
+        result = funcs.record_name_parser(values)
+        return result
 
     @root_validator(pre=True)
     @classmethod
     def abstract_record_hash(cls, values):
         values['AbstractRecordUUID'] = RecordKeyGenerator(''.join(values)).uid
         return values
-
+    # contributor_name = root_validator(pre=True)(funcs.record_name_parser('contributorName'))
+    # filer_name = root_validator(pre=True)(funcs.record_name_parser('filerName'))
     expenditure_date = validator('expendDt', pre=True, allow_reuse=True)(funcs.format_dates)
     recieved_date = validator('receivedDt', pre=True, allow_reuse=True)(funcs.format_dates)
     repayment_date = validator('repaymentDt', pre=True, allow_reuse=True)(funcs.format_dates)

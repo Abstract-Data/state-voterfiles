@@ -1,0 +1,79 @@
+[STATE-FIELD-MAPPING]
+state.agency.name = 'TEC'
+state.agency.download-url = 'https://www.ethics.state.tx.us/data/search/cf/TEC_CF_CSV.zip'
+file-prefixes.expenditures = 'expend'
+file-prefixes.contributions = 'contribs'
+columns.record-type = 'recordType'
+columns.date-time.payment-received = 'receivedDt'
+columns.date-time.expenditures = 'expendDt'
+columns.date-time.contributions = ' contributionDt'
+columns.amounts.expenditures = 'expendAmount'
+columns.amounts.contributions = 'contributionAmount'
+contributions.type_classifier = 'RCPT'
+expenditures.type_classifier = 'EXPN'
+
+[FILE-FILER-DETAILS]
+name = 'filerName'
+person.prefix = 'filerPrefix'
+person.title = 'filerTitle'
+person.firstName = 'filerFirstName'
+person.lastName = 'filerLastName'
+person.middleName = 'filerMiddleName'
+person.suffix = 'filerSuffix'
+person.formatted = 'filerNameFormatted'
+person.nickname = ''
+
+company.name = ''
+company.formatted = ''
+
+[FILE-CONTRIBUTOR-DETAILS]
+name = 'contributorNameOrganization'
+
+person.prefix = 'contributorNamePrefixCd'
+person.title = ''
+person.firstName = 'contributorNameFirst'
+person.lastName = 'contributorNameLast'
+person.middleName = ''
+person.suffix = 'contributorNameSuffixCd'
+person.formatted = 'contributorNameFormatted'
+person.nickname = ''
+
+person.employer = 'contributorEmployer'
+person.occupation = 'contributorOccupation'
+person.jobtitle = 'contributorJobTitle'
+
+company.name = 'contributorCompanyName'
+company.formatted = 'contributorCompanyNameFormatted'
+
+address.city = 'contributorStreetCity'
+address.state = 'contributorStreetStateCd'
+address.county = 'contributorStreetCountyCd'
+address.country = 'contributorStreetCountryCd'
+address.zip5 = 'contributorStreetPostalCode'
+address.zip4 = 'contributorStreetPostalCode4'
+address.street-region = 'contributorStreetRegion'
+
+[FILE-VENDOR-PAYMENT-DETAILS]
+name = 'payeeNameOrganization'
+
+company.name = 'payeeCompanyName'
+company.formatted = 'payeeCompanyNameFormatted'
+
+person.prefix = 'payeeNamePrefixCd'
+person.title = ''
+person.firstName = 'payeeNameFirst'
+person.lastName = 'payeeNameLast'
+person.middleName = ''
+person.suffix = 'payeeNameSuffixCd'
+person.formatted = 'payeeNameFormatted'
+person.nickname = ''
+
+address.address1 = 'payeeStreetAddr1'
+address.address2 = 'payeeStreetAddr2'
+address.city = 'payeeStreetCity'
+address.state = 'payeeStreetStateCd'
+address.county = 'payeeStreetCountyCd'
+address.country = 'payeeStreetCountryCd'
+address.zip5 = 'payeeStreetPostalCode'
+address.zip4 = 'payeeStreetPostalCode4'
+address.street-region = 'payeeStreetRegion'

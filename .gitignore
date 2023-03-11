@@ -6,3 +6,5 @@
 *~
 *.swp
 /.idea
+1password-credentials.json
+**/app/logs/
