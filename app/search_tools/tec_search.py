@@ -9,9 +9,17 @@ import pandas as pd
 
 @dataclass
 class ResultOptions:
-    """ResultOptions is a dataclass that is used to store the results of a query.
+    """
+    Represents the result options of a database query.
 
-    params result: List - A list of dictionaries that contain the results of a query.
+    Attributes:
+        result (List): A list of dictionaries representing the query results.
+
+    Methods:
+        __iter__(): Returns an iterator for the query results.
+        _dtypes() -> dict: Returns a dictionary of the column names and their data types.
+        pandas_types(): Replaces None, date, and UUID with their pandas equivalents.
+        to_df() -> pandas.DataFrame: Returns a pandas DataFrame of the query results.
     """
     result: List
 
@@ -50,6 +58,23 @@ class ResultOptions:
 
 @dataclass
 class QueryResults(Protocol):
+    """
+    Protocol for all query results classes.
+
+    Attributes:
+        _query (str): The query to execute.
+        result (ResultOptions): The result options of the query.
+        record_type (str): The type of record being queried.
+        __connection (Session): The SQLAlchemy database session.
+        __sql_table (Type[CampaignFinanceConfig.SQL_MODEL]): The SQLAlchemy model to query.
+        _getter (TECRecordGetter): The getter class for transforming SQLAlchemy models into Pydantic models.
+        organization (bool): True if searching for an organization, False otherwise.
+
+    Methods:
+        query() -> str: Returns the query to execute.
+        fetch(query: str = None, record_type: str = None) -> None: Executes the query and stores the results.
+        __post_init__() -> None: Executes the fetch method after class initialization.
+    """
     _query: str
     result: ResultOptions = field(init=False)
     record_type: str
@@ -71,6 +96,18 @@ class QueryResults(Protocol):
 
 @dataclass
 class ExpenseSearch(QueryResults):
+    """
+    Represents a query for expenses.
+
+    Attributes:
+        _query (str): The search query string.
+        result (ResultOptions): The query result with a list of options and total count.
+        record_type (str): The record type of the expense.
+        __connection (ClassVar): The database session.
+        __sql_table (ClassVar): The SQL model for expenses.
+        _getter (ClassVar): The class for converting SQL model objects to dictionaries.
+        organization (bool): Whether to search for an organization instead of an individual.
+"""
     _query: str
     result: ResultOptions = field(init=False)
     record_type: str = CampaignFinanceConfig.RECORD_EXPENSE_TYPE
