@@ -331,6 +331,11 @@ class TECFolderLoader:
 
 Base.metadata.create_all(bind=engine)
 files = TECFolderLoader()
-expenses = files.expenses.validate(load_to_sql=True)
-contributions = files.contributions.validate(load_to_sql=True)
+# expenses = files.expenses.validate(load_to_sql=True)
+# contributions = files.contributions.validate(load_to_sql=True)
 
+expenses = files.expenses.load_records()
+expense_data = [x.data for x in expenses]
+
+contributions = files.contributions.load_records()
+contribution_data = [x.data for x in contributions]

@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-from app.search_tools.tec_search import ContributionSearch, ExpenseSearch
+from app.search_tools.tec_search import ContributionSearch, ExpenseSearch, ResultCounter, TECSearchPrompt
+import pandas as pd
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.set_option('display.width', 1000)
 
-macias = ExpenseSearch('Macias Strategies')
+macias = TECSearchPrompt()
 
-wilks = ContributionSearch('Farris Wilks')
-dunn = ContributionSearch('Tim Dunn')
-
-berry = ExpenseSearch('Berry Communications')
-
-
+wilks = TECSearchPrompt()

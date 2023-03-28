@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from app.conf.tec_postgres import sessionmaker, SessionLocal
 from app.getters.tec_contribution_getter import TECRecordGetter
 from app.conf.config import CampaignFinanceConfig
-from typing import List, Protocol, ClassVar, Type
+from typing import List, Protocol, ClassVar, Type, Optional
 from collections import namedtuple
 import pandas as pd
 
@@ -191,11 +191,24 @@ class ContributionSearch(QueryResults):
 @dataclass
 class ResultCounter:
     _data: ContributionSearch or ExpenseSearch
-    field: str = 'filerNameFormatted'
+    _amount_field: str = field(init=False)
+    _date_field: str = field(init=False)
+    _filer_name_field: str = field(init=False)
 
     @property
     def data(self):
-        return self._data.to_df()
+        df = self._data.result.to_df()
+        return df
+
+    def get_fields(self):
+        if self._data.__class__.__name__ == 'ContributionSearch':
+            return CampaignFinanceConfig.CONTRIBUTION_AMOUNT_COLUMN, \
+                CampaignFinanceConfig.CONTRIBUTION_DATE_COLUMN, \
+                CampaignFinanceConfig.FILER_NAME_COLUMN
+        else:
+            return CampaignFinanceConfig.EXPENDITURE_AMOUNT_COLUMN, \
+                CampaignFinanceConfig.EXPENDITURE_DATE_COLUMN, \
+                CampaignFinanceConfig.FILER_NAME_COLUMN
 
     def by_year(self, df: pd.DataFrame = None) -> pd.DataFrame:
         if not df:
@@ -206,21 +219,54 @@ class ResultCounter:
 
         df = self.data
 
-        _year, _money_field, _entity_column = (
-            CampaignFinanceConfig.CONTRIBUTION_DATE_COLUMN,
-            CampaignFinanceConfig.CONTRIBUTION_AMOUNT_COLUMN,
-            'filerNameFormatted'
-        ) if self.data.__class__.__name__ == 'ContributionSearch' else (
-            CampaignFinanceConfig.EXPENDITURE_DATE_COLUMN,
-            CampaignFinanceConfig.EXPENDITURE_AMOUNT_COLUMN,
-            'payeeNameOrganization'
-        )
         _crosstab = pd.crosstab(
-            columns=df[_year].dt.year,
-            index=df[_entity_column].sort_values(ascending=True),
-            values=df[_money_field],
+            columns=df[self._date_field].dt.year,
+            index=df[self._filer_name_field].sort_values(ascending=True),
+            values=df[self._amount_field],
             aggfunc='sum',
             margins=True,
             margins_name='Total')
         result = _crosstab.dropna(how='all', axis=0).fillna(0).applymap('${:,.2f}'.format)
         return result
+
+    def __post_init__(self):
+        self._amount_field, self._date_field, self._filer_name_field = self.get_fields()
+
+
+@dataclass
+class TECSearchPrompt:
+    _type_of_search_prompt: Optional[str] = field(init=False)
+    result: ResultCounter = field(init=False)
+    by_year: pd.DataFrame = field(init=False)
+    _search_object: ContributionSearch or ExpenseSearch = field(init=False)
+    _counter: ResultCounter = field(init=False)
+    def ask_search_type(self):
+        _type_of_search_prompt = input('Would you like to search for a contribution or an expense?')
+        if _type_of_search_prompt.lower() == 'contribution':
+            self._search_object = ContributionSearch(input('What is the name of the contributor?'))
+        elif _type_of_search_prompt.lower() == 'expense':
+            self._search_object = ExpenseSearch(input('What is the name of the payee?'))
+        else:
+            raise ValueError('Please enter either "contribution" or "expense"')
+        self._type_of_search_prompt = _type_of_search_prompt
+        return self._search_object
+
+    def ask_search_query(self, result_object=None):
+        return ResultCounter(result_object)
+
+    def ask_by_year(self):
+        want_by_year = input('Would you like to see the results by year? y/n')
+        if want_by_year.lower() == 'y':
+            _result = self.result.by_year()
+            print(_result.to_markdown())
+            return _result
+        else:
+            pass
+
+    def __post_init__(self):
+        self.ask_search_type()
+        self.result = self.ask_search_query(self._search_object)
+        self.by_year = self.ask_by_year()
+
+
+

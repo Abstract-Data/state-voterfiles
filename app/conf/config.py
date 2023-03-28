@@ -19,10 +19,14 @@ class FileCategory:
 @dataclass
 class CampaignFinanceConfig:
     STATE = TomlLoader('Texas').config
+    ZIPFILE_URL = STATE['STATE-FIELD-MAPPING']['state']['agency']['download-url']
 
     VALIDATOR: Callable[[dict, ...], TECRecordValidator] = TECRecordValidator
     SQL_MODEL: Callable[[dict, ...], TECRecord] = TECRecord
     RECORD_CATEGORY = FileCategory
+
+    EXPENSE_FILE_PREFIX = STATE['STATE-FIELD-MAPPING']['file-prefixes']['expenditures']
+    CONTRIBUTION_FILE_PREFIX = STATE['STATE-FIELD-MAPPING']['file-prefixes']['contributions']
 
     VENDOR_NAME_COLUMN: str = STATE['FILE-VENDOR-PAYMENT-DETAILS']['name']
     FILER_NAME_COLUMN: str = STATE['FILE-FILER-DETAILS']['name']
