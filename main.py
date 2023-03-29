@@ -11,7 +11,7 @@ import pandas as pd
 
 
 def ohio_file():
-    ohio_cols = TomlReader(Path.cwd() / 'state_formatting' / 'ohio-voter-format.toml').data
+    ohio_cols = TomlReader(Path.cwd() / 'state_fields' / 'ohio-fields.toml').data
     ohio_vf = VoterFileLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
     return ohio_vf, ohio_cols
 

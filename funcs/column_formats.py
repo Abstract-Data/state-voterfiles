@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import ClassVar
 
 
-# ohio_cols = TomlReader(Path(__file__).parent.parent / 'state_formatting' / 'ohio-voter-format.toml').data
+# ohio_cols = TomlReader(Path(__file__).parent.parent / 'state_fields' / 'ohio-fields.toml').data
 
 
 @dataclass
