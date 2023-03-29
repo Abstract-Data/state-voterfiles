@@ -9,6 +9,7 @@ class VoterFileLoader:
     def __init__(self, file: Path):
         self._file = file
         self._data = field(init=False)
+        self.example = field(init=False)
 
     @property
     def data(self):
@@ -17,7 +18,12 @@ class VoterFileLoader:
         else:
             _delim = None
         with open(self._file, 'r') as f:
-            self._data = {k: v for k, v in enumerate(csv.DictReader(f, delimiter=_delim))}
+            self._data = {
+                k: v for k, v in enumerate(
+                    csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
+                )
+            }
+            self.example = self._data[0]
         return self._data
 
     @data.setter

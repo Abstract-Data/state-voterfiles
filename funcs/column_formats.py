@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from utils.toml_reader import TomlReader
 from pathlib import Path
-from typing import Annotated, Dict
+from typing import ClassVar
 
-data = TomlReader(Path(__file__).parent.parent / 'state_formatting' / 'ohio-voter-format.toml').data
+
+# ohio_cols = TomlReader(Path(__file__).parent.parent / 'state_formatting' / 'ohio-voter-format.toml').data
 
 
 @dataclass
@@ -40,14 +41,44 @@ class VoterAddress:
 
 
 @dataclass
+class VoterAddressParts:
+    house_number: str
+    house_direction: str
+    street_name: str
+    street_type: str
+    street_suffix: str
+    unit_number: str
+    unit_type: str
+    city: str
+    state: str
+    zip: str
+    zip4: str
+    address_obj: VoterAddress = field(init=False)
+
+    def __post_init__(self):
+        self.address_obj = VoterAddress(
+            address1=f'{self.house_number} {self.house_direction} {self.street_name} {self.street_type} {self.street_suffix}',
+            address2=f'{self.unit_type} {self.unit_number}',
+            city=self.city,
+            state=self.state,
+            zip5=self.zip,
+            zip4=self.zip4,
+            postal_code='',
+            country=''
+        )
+
+
+@dataclass
 class VoterPrecinct:
     name: str
     code: str
+
 
 @dataclass
 class VoterCity:
     name: str
     school_district: str
+
 
 @dataclass
 class VoterCounty:
@@ -62,11 +93,13 @@ class VoterCounty:
     education_service_center: str
     exempted_village_school_district: str
 
+
 @dataclass
 class VoterState:
     board_of_edu: str
     lower_chamber: str
     upper_chamber: str
+
 
 @dataclass
 class VoterFederal:
@@ -96,13 +129,19 @@ class Election:
 
 @dataclass
 class VoterInfo:
-    _data = data['PERSON-DETAILS']
-    _elections = data['ELECTION-DATES']
-    _party = data['PARTY-AFFILIATIONS']
+    __state: Path
+
+    @property
+    def _state(self):
+        return TomlReader(self.__state).data
 
     def __post_init__(self):
+        self._data = self._state['PERSON-DETAILS']
+        self._elections = self._state['ELECTION-DATES']
+        self._party = self._state['PARTY-AFFILIATIONS']
         self.voter_info: SOSVoterInfo = SOSVoterInfo(**self._data['voter-info'])
         self.name: VoterName = VoterName(**self._data['name'])
+        self.registration_address_parts: VoterAddressParts = VoterAddressParts(**self._data['ADDRESS']['parts']['residence'])
         self.registration_address: VoterAddress = VoterAddress(**self._data['ADDRESS']['residence'])
         self.mailing_address: VoterAddress = VoterAddress(**self._data['ADDRESS']['mail'])
         self.precinct: VoterPrecinct = VoterPrecinct(**self._data['VOTING-DISTRICTS']['precinct'])
@@ -126,8 +165,3 @@ class VoterInfo:
                         )
                         election_list.append(election_date)
         return election_list
-
-
-ohio = VoterInfo()
-
-

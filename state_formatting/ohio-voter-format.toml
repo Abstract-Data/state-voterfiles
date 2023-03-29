@@ -20,6 +20,18 @@
                 zip4 = 'RESIDENTIAL_ZIP_PLUS4'
                 country = 'RESIDENTIAL_COUNTRY'
                 postal_code = 'RESIDENTIAL_POSTALCODE'
+            [PERSON-DETAILS.ADDRESS.parts.residence]
+                house_number = 'RHNUM'
+                house_direction = 'RDESIG'
+                street_name = 'RSTNAME'
+                street_type = 'RSTTYPE'
+                street_suffix = 'RSTSFX'
+                unit_number = 'RUNUM'
+                unit_type = 'RUTYPE'
+                city = 'RCITY'
+                state = 'TX'
+                zip = 'RZIP'
+                zip4 = ''
             [PERSON-DETAILS.ADDRESS.mail]
                 address1 = 'MAILING_ADDRESS1'
                 address2 = 'MAILING_SECONDARY_ADDRESS'
