@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    container_name: abstract-data-state-voterfiles
+    image: python:3.10
+    ports:
+      - "8080:80"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ~/PyCharmProjects/state-voterfiles/voter_files:/app/voter_files
