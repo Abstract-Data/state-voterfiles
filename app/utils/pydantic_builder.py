@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from app.conf.config import CampaignFinanceConfig
-from app.loaders.tec_expenses import TECCategory
+from app.loaders.tec_loader import TECCategory
 from datetime import datetime
 from typing import Dict
 

@@ -1,10 +1,12 @@
-from collections import namedtuple
-from dataclasses import dataclass, field
-from app.validators.tec_contribution_validator import TECRecordValidator
-from app.models.tec_contribution_model import TECRecord
-from typing import Callable, Generator, List, Type, Dict, ClassVar
+from dataclasses import dataclass
+from app.validators.tec_expenditure_validator import TECExpenseValidator
+from app.validators.tec_contribution_validator import TECContributionValidator
+from app.models.tec_contribution_model import TECContributionRecord
+from app.models.tec_expense_model import TECExpenseRecord
+from typing import Callable, Generator
 from app.loaders.toml_loader import TomlLoader
 from app.conf.logger import CampaignFinanceLogger
+import pandas as pd
 
 
 logger = CampaignFinanceLogger(__file__)
@@ -19,10 +21,14 @@ class FileCategory:
 @dataclass
 class CampaignFinanceConfig:
     STATE = TomlLoader('Texas').config
+    STATE_AGENCY = STATE['STATE-FIELD-MAPPING']['state']['agency']['name']
     ZIPFILE_URL = STATE['STATE-FIELD-MAPPING']['state']['agency']['download-url']
 
-    VALIDATOR: Callable[[dict, ...], TECRecordValidator] = TECRecordValidator
-    SQL_MODEL: Callable[[dict, ...], TECRecord] = TECRecord
+    EXPENSE_VALIDATOR: Callable[[dict, ...], TECExpenseValidator] = TECExpenseValidator
+    CONTRIBUTION_VALIDATOR: Callable[[dict, ...], TECContributionValidator] = TECContributionValidator
+
+    EXPENSE_SQL_MODEL: Callable[[dict, ...], TECExpenseRecord] = TECExpenseRecord
+    CONTRIBUTION_SQL_MODEL: Callable[[dict, ...], TECContributionRecord] = TECContributionRecord
     RECORD_CATEGORY = FileCategory
 
     EXPENSE_FILE_PREFIX = STATE['STATE-FIELD-MAPPING']['file-prefixes']['expenditures']
@@ -48,3 +54,11 @@ class CampaignFinanceConfig:
     @staticmethod
     def create_file_category(kind: str, records: Generator) -> FileCategory:
         return FileCategory(kind, records)
+
+
+if __name__ != '__main__':
+    logger.info('Config loaded')
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.width', 1000)
+    settings = CampaignFinanceConfig()

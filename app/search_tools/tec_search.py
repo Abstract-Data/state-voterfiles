@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
 from app.conf.tec_postgres import sessionmaker, SessionLocal
-from app.getters.tec_contribution_getter import TECRecordGetter
+from app.getters.tec_contribution_getter import TECContributionGetter
+from app.getters.tec_expense_getter import TECExpenseGetter
+from app.models.tec_contribution_model import TECContributionRecord
+from app.models.tec_expense_model import TECExpenseRecord
 from app.conf.config import CampaignFinanceConfig
 from typing import List, Protocol, ClassVar, Type, Optional
 from collections import namedtuple
@@ -79,8 +82,8 @@ class QueryResults(Protocol):
     result: ResultOptions = field(init=False)
     record_type: str
     __connection: ClassVar[SessionLocal]
-    __sql_table: ClassVar[CampaignFinanceConfig.SQL_MODEL]
-    _getter: ClassVar[TECRecordGetter]
+    __sql_table: ClassVar[CampaignFinanceConfig.EXPENSE_SQL_MODEL or CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL]
+    _getter: ClassVar[TECContributionGetter or TECExpenseGetter]
     organization: bool
 
     @property
@@ -112,8 +115,8 @@ class ExpenseSearch(QueryResults):
     result: ResultOptions = field(init=False)
     record_type: str = CampaignFinanceConfig.RECORD_EXPENSE_TYPE
     __connection: ClassVar[SessionLocal] = SessionLocal
-    __sql_table: ClassVar[Type[CampaignFinanceConfig.SQL_MODEL]] = CampaignFinanceConfig.SQL_MODEL
-    _getter: ClassVar[TECRecordGetter] = TECRecordGetter
+    __sql_table: ClassVar[Type[CampaignFinanceConfig.EXPENSE_SQL_MODEL]] = CampaignFinanceConfig.EXPENSE_SQL_MODEL
+    _getter: ClassVar[TECExpenseGetter] = TECExpenseGetter
     organization: bool = False
 
     @property
@@ -148,8 +151,8 @@ class ContributionSearch(QueryResults):
     result: ResultOptions = field(init=False)
     record_type: str = CampaignFinanceConfig.RECORD_CONTRIBUTION_TYPE
     __connection: ClassVar[SessionLocal] = SessionLocal
-    __sql_table: ClassVar[Type[CampaignFinanceConfig.SQL_MODEL]] = CampaignFinanceConfig.SQL_MODEL
-    _getter: ClassVar[TECRecordGetter] = TECRecordGetter
+    __sql_table: ClassVar[Type[CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL]] = CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL
+    _getter: ClassVar[TECContributionGetter] = TECContributionGetter
     organization: bool = False
 
     @property
