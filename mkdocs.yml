@@ -22,7 +22,7 @@ theme:
     scheme: slate
     primary: pink
   icon:
-    logo: material/library/material-vote
+    logo: material-vote
     repo: fontawesome/brands/github
   features:
     - toc.integrate
