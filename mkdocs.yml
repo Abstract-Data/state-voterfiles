@@ -28,15 +28,14 @@ theme:
     - content.code.annotate
 
 plugins:
-  - git-revision-date-localized:
-      enable_creation_date: true
   - search:
       lang: en
   - social:
       cards_color:
         fill: "#F3D503"
         text: "#000000"
-
+  - git-revision-date-localized:
+      enable_creation_date: true
   - tags
   - blog
 
@@ -46,7 +45,7 @@ extra:
       link: https://twitter.com/jreakin
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/in/jreakin
-  meta_image: ./imgs/state-voterfile-meta-img.jpg
+#  meta_image: ./imgs/state-voterfile-meta-img.jpg
 
 markdown_extensions:
   - pymdownx.highlight:

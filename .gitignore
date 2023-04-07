@@ -1,3 +1,4 @@
 *.txt
 *.csv
 /voter_files/*txt
+.cache
