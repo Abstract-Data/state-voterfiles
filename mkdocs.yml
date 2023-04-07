@@ -1,0 +1,52 @@
+site_name: "Abstract Data: State Voter File Validator"
+repo_url: https://github.com/Abstract-Data/state-voterfiles
+repo_name: Abstract-Data/state-voterfiles
+edit_uri: edit/main/docs/
+
+
+
+nav:
+  - Home: index.md
+  - Functions:
+      - TomlReader: ./funcs/toml_reader_doc.md
+      - VoterFileLoader: ./funcs/voter_file_loader.md
+      - VoterInfo: ./funcs/voter_info_doc.md
+  - Validators:
+      - Texas: ./validators/texas_validator.md
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: pink
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - search:
+      lang: en
+  - tags
+  - blog
+
+extra:
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/jreakin
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/jreakin
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
