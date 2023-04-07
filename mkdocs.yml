@@ -37,8 +37,9 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       type: datetime
-  - tags
-  - blog
+#  - tags
+  - blog:
+      blog_dir: ./blog
 
 extra:
   social:
