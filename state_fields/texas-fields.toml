@@ -31,7 +31,7 @@
     city = 'RCITY'
     state = 'TX'
     zip = 'RZIP'
-    zip4 = ''
+    zip4 = 'RZIP4'
 [PERSON-DETAILS.ADDRESS.mail]
     address1 = 'MADR1'
     address2 = 'MADR2'

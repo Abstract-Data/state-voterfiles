@@ -8,6 +8,13 @@ from datetime import date
 from collections import Counter
 from pprint import pp
 import pandas as pd
+from validatiors.texas import TexasValidator
+from tqdm import tqdm
+import sys
+from collections import Counter
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
 
 
 def ohio_file():
@@ -16,4 +23,34 @@ def ohio_file():
     return ohio_vf, ohio_cols
 
 
-tx = VoterFileLoader(Path.home() / 'Desktop/VEP 2021-2022/VEP - November 2022/texasnovember2022.csv')
+tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+
+# valid, invalid = [], []
+#
+# for record in tqdm(tx.data, desc='Validating Texas Records', position=0, unit='records'):
+#     try:
+#         _record = TexasValidator(**record)
+#         valid.append(_record.dict())
+#     except ValidationError as e:
+#         invalid.append({'error': e,
+#                         'record': record})
+#     sys.stdout.write(f"\rValid: {len(valid):,} Invalid: {len(invalid):,}")
+#     sys.stdout.flush()
+#
+# errors = pd.DataFrame(invalid)
+# df = pd.DataFrame(valid)
+# df.to_csv(Path.home() / 'Downloads' / '20230404_texas_valid.csv', index=False)
+
+df_raw = pd.DataFrame(tx.data)
+
+df_raw.notna().sum()
+
+df_raw['DOB'] = pd.to_datetime(df_raw['DOB'], errors='coerce')
+df_raw['DOB'].dt.year.value_counts().sort_index()
+
+zip_count = Counter(df_raw['RZIP'])
+
+year_crosstab = pd.crosstab(
+    index=df_raw['DOB'].dt.year.astype(int),
+    columns='count',
+)

@@ -1,8 +1,8 @@
 services:
   app:
     build: .
+    image: state-voterfiles
     container_name: abstract-data-state-voterfiles
-    image: python:3.10
     ports:
       - "8080:80"
     stdin_open: true

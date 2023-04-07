@@ -2,14 +2,14 @@ import csv
 from pathlib import Path
 import re
 from dataclasses import dataclass, field
-
+import tqdm
+import pandas as pd
 
 @dataclass
 class VoterFileLoader:
-    def __init__(self, file: Path):
+    def __init__(self, file: Path, **kwargs):
         self._file = file
         self._data = field(init=False)
-        self.example = field(init=False)
 
     @property
     def data(self):
@@ -17,14 +17,22 @@ class VoterFileLoader:
             _delim = ','
         else:
             _delim = None
-        with open(self._file, 'r') as f:
-            self._data = {
-                k: v for k, v in enumerate(
-                    csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
-                )
-            }
-            self.example = self._data[0]
+
+        def read_file():
+            with open(self._file, 'r') as f:
+                _reader = csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
+                for record in _reader:
+                    yield record
+
+        self._data = read_file()
         return self._data
+
+            # self._data = {
+            #     k: v for k, v in enumerate(
+            #         csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
+            #     )
+            # }
+        # yield self._data
 
     @data.setter
     def data(self, data: dict):
