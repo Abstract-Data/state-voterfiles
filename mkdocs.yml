@@ -31,6 +31,11 @@ plugins:
       enable_creation_date: true
   - search:
       lang: en
+  - social:
+      cards_color:
+        fill: #F3D503
+        text: #000000
+
   - tags
   - blog
 
