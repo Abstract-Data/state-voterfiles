@@ -36,6 +36,7 @@ plugins:
         text: "#000000"
   - git-revision-date-localized:
       enable_creation_date: true
+      type: datetime
   - tags
   - blog
 
