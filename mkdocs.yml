@@ -38,8 +38,8 @@ plugins:
       enable_creation_date: true
       type: datetime
 #  - tags
-  - blog:
-      blog_dir: ./blog
+#  - blog:
+#      blog_dir: ./blog
 
 extra:
   social:
