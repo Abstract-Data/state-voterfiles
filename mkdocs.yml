@@ -8,6 +8,7 @@ edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
+
   - Functions:
       - TomlReader: ./funcs/toml_reader_doc.md
       - VoterFileLoader: ./funcs/voter_file_loader.md
@@ -23,6 +24,9 @@ theme:
   icon:
     repo: fontawesome/brands/github
   features:
+    - toc.integrate
+    - navigation.path
+    - navigation.tracking
     - search.suggest
     - content.code.copy
     - content.code.annotate
@@ -47,7 +51,7 @@ extra:
       link: https://twitter.com/jreakin
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/in/jreakin
-#  meta_image: ./imgs/state-voterfile-meta-img.jpg
+  meta_image: ./imgs/state-voterfile-meta-img.jpg
 
 markdown_extensions:
   - pymdownx.highlight:
