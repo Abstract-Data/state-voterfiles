@@ -1,11 +1,11 @@
+---
+title: "Abstract Data: Campaign Finance Data"
 site_name: "Abstract Data: Campaign Finance Data"
 site_url: https://abstract-data.github.io/campaignfinance/
 repo_url: https://github.com/Abstract-Data/campaignfinance
 repo_name: Abstract Data/campaignfinance
 edit_uri: edit/main/docs/
-title: "Abstract Data: Campaign Finance Data"
-
-
+---
 
 nav:
   - Home: index.md
@@ -48,6 +48,7 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       type: datetime
+  - meta
 #  - tags
 #  - blog:
 #      blog_dir: ./blog
