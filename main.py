@@ -6,8 +6,8 @@ import pandera as pa
 import pandas as pd
 
 files = TECFolderLoader()
-cont = files.contributions.load_files()
-write_pandas_schema(pd.DataFrame(cont), 'tec_contribution_schema')
+cont = files.contributions.load_records()
+# write_pandas_schema(pd.DataFrame(cont), 'tec_contribution_schema')
 # expenses = files.expenses.validate_category(load_to_sql=True)
 # contributions = files.contributions.validate_category(load_to_sql=True)
 

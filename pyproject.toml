@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "campaignfinance"
+version = "0.1.0"
+description = "Texas Ethics Commission Campaign Finance Validation and Search Tool"
+authors = ["John R. Eakin <johnreakin@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+phonenumbers = "^8.13.9"
+probablepeople = ">=0.5.4,<0.6.0"
+nameparser = ">=1.1.2,<1.2.0"
+sqlalchemy = ">=1.4.46,<1.5.0"
+pydantic = "^1.10.7"
+pandas = ">=1.4.3,<1.5.0"
+requests = ">=2.28.2,<2.29.0"
+tqdm = "^4.65.0"
+python-dotenv = "^1.0.0"
+tomli = ">=2.0.1,<2.1.0"
+setuptools = "^67.6.1"
+aiopath = ">=0.6.11,<0.7.0"
+pandera = "^0.14.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
