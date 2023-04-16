@@ -4,6 +4,7 @@ import phonenumbers
 import probablepeople as pp
 from nameparser import HumanName
 from collections import namedtuple
+import zipcodes
 from typing import Dict
 from dataclasses import dataclass, field
 from app.utils.file_field_assigner import field_generator
@@ -35,7 +36,7 @@ def strip_punctuation(v):
 def zip_validator(zipcode):
     if zipcode:
         _zipcode = str(zipcode)
-        _zip5, _zip4 = None, None
+        _zip5, _zip4, _error = None, None, None
         if len(_zipcode) == 5:
             _zip5 = _zipcode
         elif '-' in _zipcode:
@@ -45,11 +46,14 @@ def zip_validator(zipcode):
 
         elif not _zipcode.isnumeric():
             if len(_zipcode) == 5:
-                _zip5 = _zipcode
+                if zipcodes.is_real(_zipcode):
+                    _zip5 = _zipcode
+                else:
+                    _error = f'Invalid Zip Code: {_zipcode}'
         else:
             raise ValueError('Invalid Zip Code')
 
-        return _zip5, _zip4
+        return _zip5, _zip4, _error
 
 
 def phone_validator(phone):

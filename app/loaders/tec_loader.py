@@ -13,6 +13,7 @@ import requests
 import pandas as pd
 from app.conf.logger import CampaignFinanceLogger
 import json
+import pandera as pa
 
 logger = CampaignFinanceLogger(__file__)
 
@@ -44,10 +45,10 @@ class TECRecord:
 
     def get_validator(self):
         # Checks the record's category and returns the appropriate validator and SQL model.
-        if self.category == settings.RECORD_EXPENSE_TYPE:
+        if self.category == settings.TYPE_EXPENSE:
             self.validator = settings.EXPENSE_VALIDATOR
             self.sql_model = settings.EXPENSE_SQL_MODEL
-        elif self.category == settings.RECORD_CONTRIBUTION_TYPE:
+        elif self.category == settings.TYPE_CONTRIBUTION:
             self.validator = settings.CONTRIBUTION_VALIDATOR
             self.sql_model = settings.CONTRIBUTION_SQL_MODEL
         else:
@@ -90,7 +91,7 @@ class TECFile:
     failed: List = None
 
     @property
-    def records(self) -> Generator[RECORD_SQL_MODEL, None, None]:
+    def records(self) -> Generator[TECRecord, None, None]:
         opn = open(self.file, 'r')
         for _record in csv.DictReader(opn):
             r = TECRecord(_record)
@@ -130,8 +131,9 @@ class TECFile:
 
     def generate_models(self) -> RECORD_SQL_MODEL:
         logger.info(f'Creating {self.file.name} SQL models...')
+        __sql_model = [x for x in self.records][0].sql_model
         for _record in tqdm(self.passed, desc=f'Creating {self.file.name} SQL models', unit=' records'):
-            self.to_sql = yield _record.sql_model(**_record.dict())
+            self.to_sql = yield __sql_model(**_record.dict())
 
 
 @dataclass

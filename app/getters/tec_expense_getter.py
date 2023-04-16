@@ -1,7 +1,10 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Dict
 from datetime import date, datetime
+import pandera as pa
+from pandera.engines.pandas_engine import PydanticModel
+
 
 
 class TECExpenseGetter(BaseModel):
@@ -51,8 +54,10 @@ class TECExpenseGetter(BaseModel):
     payeeStreetRegion: Optional[str]
     creditCardIssuer: Optional[str]
     repaymentDt: Optional[date]
+    AbstractRecordErrors: Optional[Dict[str, str]]
     AbstractRecordUUID: UUID
     AbstractRecordUpdateDt: datetime = datetime.now()
 
     class Config:
         orm_mode = True
+        validate_all = True

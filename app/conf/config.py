@@ -35,7 +35,7 @@ class CampaignFinanceConfig:
     CONTRIBUTION_FILE_PREFIX = STATE['STATE-FIELD-MAPPING']['file-prefixes']['contributions']
 
     VENDOR_NAME_COLUMN: str = STATE['FILE-VENDOR-PAYMENT-DETAILS']['name']
-    FILER_NAME_COLUMN: str = STATE['FILE-FILER-DETAILS']['name']
+    FILER_NAME_COLUMN: str = STATE['FILE-FILER-DETAILS']['person']['formatted']
 
     PAYMENT_RECEIVED_DATE_COLUMN: str = STATE['STATE-FIELD-MAPPING']['columns']['date-time']['payment-received']
     EXPENDITURE_DATE_COLUMN: str = STATE['STATE-FIELD-MAPPING']['columns']['date-time']['expenditures']
@@ -45,8 +45,8 @@ class CampaignFinanceConfig:
     CONTRIBUTION_AMOUNT_COLUMN: str = STATE['STATE-FIELD-MAPPING']['columns']['amounts']['contributions']
 
     RECORD_TYPE_COLUMN: str = STATE['STATE-FIELD-MAPPING']['columns']['record-type']
-    RECORD_EXPENSE_TYPE: str = STATE['STATE-FIELD-MAPPING']['expenditures']['type_classifier']
-    RECORD_CONTRIBUTION_TYPE: str = STATE['STATE-FIELD-MAPPING']['contributions']['type_classifier']
+    TYPE_EXPENSE: str = STATE['STATE-FIELD-MAPPING']['expenditures']['type_classifier']
+    TYPE_CONTRIBUTION: str = STATE['STATE-FIELD-MAPPING']['contributions']['type_classifier']
 
     DATE_COLUMNS = [PAYMENT_RECEIVED_DATE_COLUMN, EXPENDITURE_DATE_COLUMN, CONTRIBUTION_DATE_COLUMN]
     UPPERCASE_COLUMNS = [VENDOR_NAME_COLUMN, FILER_NAME_COLUMN]

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, validator, Field, root_validator, ValidationError
 from uuid import UUID
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Dict
 from datetime import date, datetime
 import app.funcs.validator_funcs as funcs
 from app.funcs.record_key_generator import RecordKeyGenerator
@@ -9,19 +9,27 @@ from app.funcs.record_key_generator import RecordKeyGenerator
 class TECContributionValidator(BaseModel):
     recordType: str
     formTypeCd: str
-    schedFormTypeCd: Optional[str]
-    reportInfoIdent: Optional[int]
+    schedFormTypeCd: str
+    reportInfoIdent: int
     receivedDt: date
-    infoOnlyFlag: Optional[bool]
+    infoOnlyFlag: Optional[str]
     filerIdent: int
     filerTypeCd: str
-    filerName: Optional[str]
+    filerName: str
+    filerNameFormatted: Optional[str]
+    filerFirstName: Optional[str]
+    filerLastName: Optional[str]
+    filerMiddleName: Optional[str]
+    filerPrefix: Optional[str]
+    filerSuffix: Optional[str]
+    filerCompanyName: Optional[str]
+    filerCompanyNameFormatted: Optional[str]
     contributionInfoId: Optional[int]
     contributionDt: date
-    contributionAmount: Optional[float]
+    contributionAmount: float
     contributionDescr: Optional[str]
-    itemizeFlag: Optional[bool]
-    travelFlag: Optional[bool]
+    itemizeFlag: Optional[str]
+    travelFlag: Optional[str]
     contributorPersentTypeCd: Optional[str]
     contributorNameOrganization: Optional[str]
     contributorNameLast: Optional[str]
@@ -29,21 +37,24 @@ class TECContributionValidator(BaseModel):
     contributorNameFirst: Optional[str]
     contributorNamePrefixCd: Optional[str]
     contributorNameShort: Optional[str]
-    contributorStreetCity: Optional[str]
+    contributorStreetCity: str
     contributorStreetStateCd: Optional[str]
     contributorStreetCountyCd: Optional[str]
     contributorStreetCountryCd: Optional[str]
     contributorStreetPostalCode: Optional[str]
+    contributorZipCode5: Optional[int]
+    contributorZipCode4: Optional[int]
     contributorStreetRegion: Optional[str]
     contributorEmployer: Optional[str]
     contributorOccupation: Optional[str]
     contributorJobTitle: Optional[str]
     contributorPacFein: Optional[str]
-    contributorOosPacFlag: Optional[bool]
+    contributorOosPacFlag: Optional[str]
     contributorLawFirmName: Optional[str]
     contributorSpouseLawFirmName: Optional[str]
     contributorParent1LawFirmName: Optional[str]
     contributorParent2LawFirmName: Optional[str]
+    AbstractRecordErrors: Dict[str, str] = {}
     AbstractRecordUUID: UUID
     AbstractRecordUpdateDt: datetime = datetime.now()
 
@@ -72,15 +83,12 @@ class TECContributionValidator(BaseModel):
     @root_validator(pre=True)
     @classmethod
     def _postal_code(cls, values):
-        _payee_zip = values.get('payeeStreetPostalCode', None)
         _contributor_zip = values.get('contributorStreetPostalCode', None)
-
-        if _payee_zip:
-            values['payeeStreetPostalCode'], \
-                values['payeeStreetPostalCode4'] = funcs.zip_validator(_payee_zip)
         if _contributor_zip:
-            values['contributorStreetPostalCode'], \
-                values['contributorStreetPostalCode4'] = funcs.zip_validator(_contributor_zip)
+            values['contributorZipCode5'], \
+                values['contributorZipCode4'], _error = funcs.zip_validator(_contributor_zip)
+            if _error:
+                values['AbstractRecordErrors']['contributorZipCode5'] = _error
         return values
 
     @root_validator(pre=True)

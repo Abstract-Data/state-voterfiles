@@ -2,61 +2,11 @@ from dataclasses import dataclass, field
 from app.conf.tec_postgres import sessionmaker, SessionLocal
 from app.getters.tec_contribution_getter import TECContributionGetter
 from app.getters.tec_expense_getter import TECExpenseGetter
-from app.models.tec_contribution_model import TECContributionRecord
-from app.models.tec_expense_model import TECExpenseRecord
 from app.conf.config import CampaignFinanceConfig
 from typing import List, Protocol, ClassVar, Type, Optional
-from collections import namedtuple
 import pandas as pd
-
-
-@dataclass
-class ResultOptions:
-    """
-    Represents the result options of a database query.
-
-    Attributes:
-        result (List): A list of dictionaries representing the query results.
-
-    Methods:
-        __iter__(): Returns an iterator for the query results.
-        _dtypes() -> dict: Returns a dictionary of the column names and their data types.
-        pandas_types(): Replaces None, date, and UUID with their pandas equivalents.
-        to_df() -> pandas.DataFrame: Returns a pandas DataFrame of the query results.
-    """
-    result: List
-
-    def __iter__(self):
-        return iter(self.result)
-
-    @property
-    def _dtypes(self) -> dict:
-        """
-        Returns a dictionary of the column names and their data types.
-        """
-        return {k: v.__class__.__name__ for r in self.result for k, v in r.items()}
-
-    @property
-    def pandas_types(self):
-        """
-        Replaces None, date, and UUID with their pandas equivalents.
-        """
-        dtypes = self._dtypes
-        # Replace values == 'date' with pd.Datetime in dtypes
-        for k, v in dtypes.items():
-            if v in ['date', 'datetime']:
-                dtypes[k] = 'datetime64[ns]'
-            if v == 'NoneType':
-                dtypes[k] = 'object'
-            if v == 'UUID':
-                dtypes[k] = 'object'
-        return dtypes
-
-    def to_df(self):
-        """
-        Returns a pandas DataFrame of the query results.
-        """
-        return pd.DataFrame(self.result).astype(self.pandas_types)
+from app.pandas_schemas.tec_expense_schema import TECExpensePandasSchema
+import pandera as pa
 
 
 @dataclass
@@ -79,8 +29,9 @@ class QueryResults(Protocol):
         __post_init__() -> None: Executes the fetch method after class initialization.
     """
     _query: str
-    result: ResultOptions = field(init=False)
+    result: List = field(init=False)
     record_type: str
+    _pandas_schema: ClassVar[pa.DataFrameSchema]
     __connection: ClassVar[SessionLocal]
     __sql_table: ClassVar[CampaignFinanceConfig.EXPENSE_SQL_MODEL or CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL]
     _getter: ClassVar[TECContributionGetter or TECExpenseGetter]
@@ -92,6 +43,12 @@ class QueryResults(Protocol):
 
     def fetch(self, query=None, record_type=None) -> None:
         ...
+
+    def to_df(self) -> pd.DataFrame:
+        """
+        Returns a pandas DataFrame of the query results.
+        """
+        return pd.DataFrame(self.result)
 
     def __post_init__(self):
         ...
@@ -112,8 +69,10 @@ class ExpenseSearch(QueryResults):
         organization (bool): Whether to search for an organization instead of an individual.
 """
     _query: str
-    result: ResultOptions = field(init=False)
-    record_type: str = CampaignFinanceConfig.RECORD_EXPENSE_TYPE
+    result: List = field(init=False)
+    dataframe: pd.DataFrame = field(init=False)
+    record_type: str = CampaignFinanceConfig.TYPE_EXPENSE
+    _pandas_schema: ClassVar[pa.DataFrameSchema] = TECExpensePandasSchema
     __connection: ClassVar[SessionLocal] = SessionLocal
     __sql_table: ClassVar[Type[CampaignFinanceConfig.EXPENSE_SQL_MODEL]] = CampaignFinanceConfig.EXPENSE_SQL_MODEL
     _getter: ClassVar[TECExpenseGetter] = TECExpenseGetter
@@ -138,8 +97,16 @@ class ExpenseSearch(QueryResults):
                 ExpenseSearch.__sql_table.recordType == self.record_type)
             _result = [ExpenseSearch._getter.from_orm(x).dict() for x in response.all()]
 
-            self.result = ResultOptions(_result)
+            self.result = _result
         return self
+
+    @pa.check_output(_pandas_schema, lazy=True)
+    def to_df(self) -> pd.DataFrame:
+        """
+        Returns a pandas DataFrame of the query results.
+        """
+        self.dataframe = pd.DataFrame(self.result)
+        return self.dataframe
 
     def __post_init__(self):
         self.fetch()
@@ -148,10 +115,11 @@ class ExpenseSearch(QueryResults):
 @dataclass
 class ContributionSearch(QueryResults):
     _query: str
-    result: ResultOptions = field(init=False)
-    record_type: str = CampaignFinanceConfig.RECORD_CONTRIBUTION_TYPE
+    result: List = field(init=False)
+    record_type: str = CampaignFinanceConfig.TYPE_CONTRIBUTION
     __connection: ClassVar[SessionLocal] = SessionLocal
-    __sql_table: ClassVar[Type[CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL]] = CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL
+    __sql_table: ClassVar[
+        Type[CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL]] = CampaignFinanceConfig.CONTRIBUTION_SQL_MODEL
     _getter: ClassVar[TECContributionGetter] = TECContributionGetter
     organization: bool = False
 
@@ -183,7 +151,7 @@ class ContributionSearch(QueryResults):
                     ContributionSearch.__sql_table.contributorNameLast.like(f'%{self.query[1]}%'),
                     ContributionSearch.__sql_table.recordType == self.record_type)
             _result = [ContributionSearch._getter.from_orm(x).dict() for x in response.all()]
-            self.result = ResultOptions(_result)
+            self.result = _result
         return self
 
     def __post_init__(self):
@@ -199,8 +167,13 @@ class ResultCounter:
     _filer_name_field: str = field(init=False)
 
     @property
+    def pandas_schema(self):
+        if isinstance(self._data, ExpenseSearch):
+            return TECExpensePandasSchema
+
+    @property
     def data(self):
-        df = self._data.result.to_df()
+        df = self._data.to_df()
         return df
 
     def get_fields(self):
@@ -224,7 +197,7 @@ class ResultCounter:
 
         _crosstab = pd.crosstab(
             columns=df[self._date_field].dt.year,
-            index=df[self._filer_name_field].sort_values(ascending=True),
+            index=df[self._filer_name_field],
             values=df[self._amount_field],
             aggfunc='sum',
             margins=True,
@@ -243,6 +216,7 @@ class TECSearchPrompt:
     by_year: pd.DataFrame = field(init=False)
     _search_object: ContributionSearch or ExpenseSearch = field(init=False)
     _counter: ResultCounter = field(init=False)
+
     def ask_search_type(self):
         _type_of_search_prompt = input('Would you like to search for a contribution or an expense?')
         if _type_of_search_prompt.lower() == 'contribution':
@@ -270,6 +244,3 @@ class TECSearchPrompt:
         self.ask_search_type()
         self.result = self.ask_search_query(self._search_object)
         self.by_year = self.ask_by_year()
-
-
-

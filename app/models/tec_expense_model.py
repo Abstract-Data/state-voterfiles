@@ -1,17 +1,18 @@
 from app.conf.tec_postgres import Base
-from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime
+from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, JSON
+
 
 
 class TECExpenseRecord(Base):
     __tablename__ = "tec_expenses"
     __table_args__ = {'schema': 'texas'}
 
-    recordType = Column(String, nullable=True)
-    formTypeCd = Column(String, nullable=True)
-    schedFormTypeCd = Column(String, nullable=True)
-    reportInfoIdent = Column(Integer, nullable=True)
+    recordType = Column(String, nullable=False)
+    formTypeCd = Column(String, nullable=False)
+    schedFormTypeCd = Column(String, nullable=False)
+    reportInfoIdent = Column(Integer, nullable=False)
     receivedDt = Column(Date, nullable=False)
-    infoOnlyFlag = Column(Boolean, nullable=True)
+    infoOnlyFlag = Column(String, nullable=True)
     filerIdent = Column(Integer, nullable=False)
     filerTypeCd = Column(String, nullable=True)
     filerName = Column(String, nullable=False)
@@ -25,15 +26,15 @@ class TECExpenseRecord(Base):
     filerCompanyNameFormatted = Column(String, nullable=True)
     expendInfoId = Column(Integer, nullable=True)
     expendDt = Column(Date, nullable=False)
-    expendAmount = Column(String, nullable=True)
+    expendAmount = Column(Float, nullable=False)
     expendDescr = Column(String, nullable=True)
     expendCatCd = Column(String, nullable=True)
     expendCatDescr = Column(String, nullable=True)
     itemizeFlag = Column(String, nullable=True)
     travelFlag = Column(String, nullable=True)
-    politicalExpendCd = Column(Boolean, nullable=True)
-    reimburseIntendedFlag = Column(Boolean, nullable=True)
-    srcCorpContribFlag = Column(Boolean, nullable=True)
+    politicalExpendCd = Column(String, nullable=True)
+    reimburseIntendedFlag = Column(String, nullable=True)
+    srcCorpContribFlag = Column(String, nullable=True)
     capitalLivingexpFlag = Column(String, nullable=True)
     payeePersentTypeCd = Column(String, nullable=True)
     payeeNameOrganization = Column(String, nullable=True)
@@ -42,15 +43,18 @@ class TECExpenseRecord(Base):
     payeeNameFirst = Column(String, nullable=True)
     payeeNamePrefixCd = Column(String, nullable=True)
     payeeNameShort = Column(String, nullable=True)
-    payeeStreetAddr1 = Column(String, nullable=True)
+    payeeStreetAddr1 = Column(String, nullable=False)
     payeeStreetAddr2 = Column(String, nullable=True)
-    payeeStreetCity = Column(String, nullable=True)
+    payeeStreetCity = Column(String, nullable=False)
     payeeStreetStateCd = Column(String, nullable=True)
     payeeStreetCountyCd = Column(String, nullable=True)
     payeeStreetCountryCd = Column(String, nullable=True)
     payeeStreetPostalCode = Column(String, nullable=True)
+    payeeZipCode5 = Column(Integer, nullable=True)
+    payeeZipCode4 = Column(Integer, nullable=True)
     payeeStreetRegion = Column(String, nullable=True)
     creditCardIssuer = Column(String, nullable=True)
-    repaymentDt = Column(Date, nullable=False)
+    repaymentDt = Column(Date, nullable=True)
+    AbstractRecordErrors = Column(JSON, nullable=True)
     AbstractRecordUUID = Column(String, nullable=False, primary_key=True)
     AbstractRecordUpdateDt = Column(DateTime, nullable=False)

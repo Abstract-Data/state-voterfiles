@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Dict
 from datetime import date, datetime
 
 
@@ -32,6 +32,8 @@ class TECContributionGetter(BaseModel):
     contributorStreetCountyCd: Optional[str]
     contributorStreetCountryCd: Optional[str]
     contributorStreetPostalCode: Optional[str]
+    contributorZipCode5: Optional[int]
+    contributorZipCode4: Optional[int]
     contributorStreetRegion: Optional[str]
     contributorEmployer: Optional[str]
     contributorOccupation: Optional[str]
@@ -42,6 +44,7 @@ class TECContributionGetter(BaseModel):
     contributorSpouseLawFirmName: Optional[str]
     contributorParent1LawFirmName: Optional[str]
     contributorParent2LawFirmName: Optional[str]
+    AbstractRecordErrors: Dict[str, str] = {}
     AbstractRecordUUID: UUID
     AbstractRecordUpdateDt: datetime
 
