@@ -5,6 +5,7 @@ import zipcodes
 
 
 class TexasValidator(BaseModel):
+    COUNTY: str
     VUID: conint(ge=0, le=999999999999)
     EDR: date
     STATUS: str
@@ -34,6 +35,7 @@ class TexasValidator(BaseModel):
     NEWHD: conint(ge=0, le=150)
     NEWSD: conint(ge=0, le=35)
     NEWCD: conint(ge=0, le=39)
+    ABSTRACT_UPDATE: datetime = datetime.now()
 
     class Config:
         orm_mode = True
@@ -50,6 +52,13 @@ class TexasValidator(BaseModel):
 
     @root_validator(pre=True)
     @classmethod
+    def update_county_name(cls, values):
+        if values['\ufeffCOUNTY']:
+            values['COUNTY'] = values['\ufeffCOUNTY']
+        return values
+
+    @root_validator(pre=True)
+    @classmethod
     def validate_zip(cls, values):
         _registration_zip = values.get('RZIP', None)
         _mailing_zip = values.get('MZIP', None)
@@ -58,16 +67,7 @@ class TexasValidator(BaseModel):
             if zip_code:
                 _zip = zipcodes.is_real(str(zip_code))
                 if not _zip:
-                    raise ValidationError(
-                        model=TexasValidator,
-                        errors=[
-                            {
-                                'loc': f"{zip_code}",
-                                'msg': 'Invalid zip code',
-                                'type': 'value_error'
-                            }
-                        ]
-                    )
+                    raise ValueError(f'Invalid zip code: {zip_code}')
                 elif '-' in zip_code:
                     zip5_col, zip4_col = zip_code.split('-')
                 else:
@@ -86,4 +86,7 @@ class TexasValidator(BaseModel):
     @classmethod
     def validate_dates(cls, v):
         if v:
-            return datetime.strptime(v, '%Y%m%d').date()
+            try:
+                return datetime.strptime(v, '%Y%m%d').date()
+            except ValueError or ValidationError:
+                raise ValueError(f'Invalid date format: {v}')

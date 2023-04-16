@@ -2,7 +2,7 @@ import csv
 from pathlib import Path
 import re
 from dataclasses import dataclass, field
-import tqdm
+from tqdm import tqdm
 import pandas as pd
 
 @dataclass
@@ -21,18 +21,18 @@ class VoterFileLoader:
         def read_file():
             with open(self._file, 'r') as f:
                 _reader = csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
-                for record in _reader:
-                    yield record
+                yield _reader
+                # updated_dict = {}
+                # for num, _record in enumerate(_reader):
+                #     updated_record = {}
+                #     for k, v in _record.items():
+                #         updated_dict[k.replace('\ufeff', '')] = v
+                #     updated_dict[num] = updated_record
+                # yield updated_record
 
         self._data = read_file()
-        return self._data
 
-            # self._data = {
-            #     k: v for k, v in enumerate(
-            #         csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
-            #     )
-            # }
-        # yield self._data
+        return self._data
 
     @data.setter
     def data(self, data: dict):
@@ -51,4 +51,6 @@ class VoterFileLoader:
                     updated_record[k] = v
             _updated_data[index] = updated_record
         return _updated_data
+
+
 

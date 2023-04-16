@@ -9,14 +9,21 @@ from collections import Counter
 from pprint import pp
 import pandas as pd
 from validatiors.texas import TexasValidator
+from models.texas import TexasRecord
 from tqdm import tqdm
 import sys
 from collections import Counter
+import json
+from utils.state_validator import StateValidator
+from conf.postgres import Base, engine, SessionLocal
+
+Base.metadata.create_all(bind=engine)
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
-
+db = SessionLocal()
+db.rollback()
 def ohio_file():
     ohio_cols = TomlReader(Path.cwd() / 'state_fields' / 'ohio-fields.toml').data
     ohio_vf = VoterFileLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
@@ -24,6 +31,14 @@ def ohio_file():
 
 
 tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+
+tx_validator = StateValidator(
+    file=tx,
+    validator=TexasValidator,
+    sql_model=TexasRecord,
+    load_to_sql=True)
+
+tx_validator.validate()
 
 # valid, invalid = [], []
 #
@@ -41,16 +56,16 @@ tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.
 # df = pd.DataFrame(valid)
 # df.to_csv(Path.home() / 'Downloads' / '20230404_texas_valid.csv', index=False)
 
-df_raw = pd.DataFrame(tx.data)
-
-df_raw.notna().sum()
-
-df_raw['DOB'] = pd.to_datetime(df_raw['DOB'], errors='coerce')
-df_raw['DOB'].dt.year.value_counts().sort_index()
-
-zip_count = Counter(df_raw['RZIP'])
-
-year_crosstab = pd.crosstab(
-    index=df_raw['DOB'].dt.year.astype(int),
-    columns='count',
-)
+# df_raw = pd.DataFrame(tx.data)
+#
+# df_raw.notna().sum()
+#
+# df_raw['DOB'] = pd.to_datetime(df_raw['DOB'], errors='coerce')
+# df_raw['DOB'].dt.year.value_counts().sort_index()
+#
+# zip_count = Counter(df_raw['RZIP'])
+#
+# year_crosstab = pd.crosstab(
+#     index=df_raw['DOB'].dt.year.astype(int),
+#     columns='count',
+# )
