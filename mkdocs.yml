@@ -45,7 +45,6 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: false
       type: datetime
-  - meta
 #  - tags
 #  - blog:
 #      blog_dir: ./blog
