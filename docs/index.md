@@ -1,3 +1,6 @@
+---
+title: "Abstract Data: Campaign Finance Data"
+---
 # Abstract Data <br> Campaign Finance Data
 
 This package is designed to make it easy to download, validate, and load campaign finance data from the Texas Ethics Commission (TEC) website.
