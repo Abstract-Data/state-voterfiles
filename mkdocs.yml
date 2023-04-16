@@ -15,10 +15,10 @@ nav:
       - TECFolderLoader():
           - Description: ./pages/tec_loading/tec_folderloader.md
           - Supporting classes: ./pages/tec_loading/tec_record_classes.md
-  - Other Folder:
-      - Other 1: ./other/{page.md}
-  - Project Info:
-      - Project Layout: ./pages/project_layout.md
+#  - Other Folder:
+#      - Other 1: ./other/{page.md}
+#  - Project Info:
+#      - Project Layout: ./pages/project_layout.md
 
 theme:
   name: material
