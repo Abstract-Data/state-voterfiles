@@ -1,0 +1,75 @@
+site_name: "Abstract Data: Campaign Finance Data"
+site_url: https://abstract-data.github.io/campaignfinance/
+repo_url: https://github.com/Abstract-Data/campaignfinance
+repo_name: Abstract Data/campaignfinance
+edit_uri: edit/main/docs/
+
+
+
+nav:
+  - Home: index.md
+
+  - Search Capabilities:
+      - Expense & Contribution Searching: ./pages/funcs/search.md
+      - Search Result Calculating: ./pages/funcs/result-counter.md
+  -  Record, File, and Category Handling:
+      - Example: ./pages/tec_loading/tec_load_example.md
+      - TECFolderLoader():
+          - Description: ./pages/tec_loading/tec_folderloader.md
+          - Supporting classes: ./pages/tec_loading/tec_record_classes.md
+  - Other Folder:
+      - Other 1: ./other/{page.md}
+  - Project Info:
+      - Project Layout: ./pages/project_layout.md
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: pink
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - toc.integrate
+    - navigation.path
+    - navigation.tracking
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search:
+      lang: en
+  - social:
+      cards_color:
+        fill: "#F3D503"
+        text: "#000000"
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: datetime
+#  - tags
+#  - blog:
+#      blog_dir: ./blog
+
+extra:
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/jreakin
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/jreakin
+  meta_image: ./imgs/state-voterfile-meta-img.jpg
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+
+
