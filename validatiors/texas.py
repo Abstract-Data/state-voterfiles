@@ -6,7 +6,7 @@ import zipcodes
 
 class TexasValidator(BaseModel):
     COUNTY: str
-    VUID: conint(ge=0, le=999999999999)
+    VUID: conint(ge=0, le=9999999999)
     EDR: date
     STATUS: str
     LNAME: str

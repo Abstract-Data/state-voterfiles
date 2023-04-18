@@ -39,7 +39,7 @@ tx_validator = StateValidator(
     sql_model=TexasRecord,
     load_to_sql=True)
 
-tx_validator.validate(load_to_sql=True)
+tx_validator.validate()
 
 # valid, invalid = [], []
 #

@@ -41,7 +41,7 @@ class StateValidator:
             db.commit()
             _loaded_counter += len(records_to_load)
 
-    def validate(self):
+    def validate(self, **kwargs):
         passed, failed = [], []
         for record in tqdm(self.file.data, desc='Validating Records', position=0, unit=' records'):
             try:
@@ -56,7 +56,7 @@ class StateValidator:
                     self.load_file_to_sql(passed)
                     passed = []
 
-        if self.kwargs.get('load_to_sql', False):
+        if self.kwargs.get('load_to_sql', False) or kwargs.get('load_to_sql', False):
             self.load_file_to_sql(passed)
             return failed
         else:

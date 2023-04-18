@@ -36,5 +36,5 @@ class TexasRecord(Base):
     NEWHD = Column(Integer, nullable=False)
     NEWSD = Column(Integer, nullable=False)
     NEWCD = Column(Integer, nullable=False)
-    ABSTRACT_UPDATE = Column(TIMESTAMP, nullable=False)
+    ABSTRACT_UPDATE = Column(DateTime, nullable=False)
 
