@@ -2,4 +2,4 @@
 *.csv
 /voter_files/*txt
 .cache
-*.env
+.env
