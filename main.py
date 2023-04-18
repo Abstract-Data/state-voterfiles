@@ -23,7 +23,8 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
 db = SessionLocal()
-db.rollback()
+# db.rollback()
+
 def ohio_file():
     ohio_cols = TomlReader(Path.cwd() / 'state_fields' / 'ohio-fields.toml').data
     ohio_vf = VoterFileLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
@@ -38,7 +39,7 @@ tx_validator = StateValidator(
     sql_model=TexasRecord,
     load_to_sql=True)
 
-tx_validator.validate()
+tx_validator.validate(load_to_sql=True)
 
 # valid, invalid = [], []
 #

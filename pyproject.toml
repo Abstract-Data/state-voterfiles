@@ -14,6 +14,7 @@ sqlalchemy = ">=1.4.46,<1.5.0"
 python-dotenv = "^1.0.0"
 tqdm = "^4.65.0"
 zipcodes = ">=1.2.0,<1.3.0"
+psycopg2 = "^2.9.6"
 
 
 [build-system]

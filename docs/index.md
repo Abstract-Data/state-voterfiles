@@ -6,6 +6,23 @@
 * `class VoterInfo` - Map column fields to class for reference
 * `class VoterFileLoader` - Load a state voter file
 
+## Example
+
+```py title="main.py"
+from utils.toml_reader import TomlReader
+from utils.csv_loader import VoterFileLoader
+
+tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+
+tx_validator = StateValidator(
+    file=tx,
+    validator=TexasValidator,
+    sql_model=TexasRecord,
+    load_to_sql=True)
+
+tx_validator.validate()
+```
+
 ## Project layout
 
     main  ...

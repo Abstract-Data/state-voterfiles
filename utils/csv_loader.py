@@ -21,7 +21,8 @@ class VoterFileLoader:
         def read_file():
             with open(self._file, 'r') as f:
                 _reader = csv.DictReader(f, delimiter=_delim) if _delim else csv.DictReader(f)
-                yield _reader
+                for _record in _reader:
+                    yield _record
                 # updated_dict = {}
                 # for num, _record in enumerate(_reader):
                 #     updated_record = {}

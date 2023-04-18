@@ -43,7 +43,7 @@ class StateValidator:
 
     def validate(self):
         passed, failed = [], []
-        for record in self.file.data:
+        for record in tqdm(self.file.data, desc='Validating Records', position=0, unit=' records'):
             try:
                 r = self.validator(**record)
                 passed.append(r)

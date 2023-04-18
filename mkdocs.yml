@@ -15,6 +15,9 @@ nav:
       - VoterInfo: ./funcs/voter_info_doc.md
   - Validators:
       - Texas: ./validators/texas_validator.md
+  - State Field Info:
+      - Texas: ./state-fields/texas-fields.md
+      - Ohio: ./state-fields/ohio-fields.md
 
 theme:
   name: material
