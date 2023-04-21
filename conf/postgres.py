@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData, select
+from sqlalchemy import create_engine, MetaData, select, insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv

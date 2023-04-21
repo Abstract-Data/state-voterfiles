@@ -4,7 +4,7 @@ from validatiors.texas import TexasValidator
 from models.texas import TexasRecord
 from typing import Callable, List, Generator, Dict
 from pydantic import ValidationError
-from conf.postgres import SessionLocal, sessionmaker, Base, engine
+from conf.postgres import SessionLocal, sessionmaker, Base, engine, insert
 from tqdm import tqdm
 
 
@@ -15,13 +15,15 @@ class StateValidator:
         self.validator: Callable[[TexasValidator], TexasValidator] = validator
         self.sql_model: Callable[[TexasRecord], TexasValidator] = sql_model
         self.kwargs = kwargs
+        self.passed = []
+        self.failed = []
 
     def load_file_to_sql(
             self,
             records: List[TexasValidator],
             session: sessionmaker = SessionLocal):
 
-        models = [self.sql_model(**record.dict()) for record in records]
+        models = (self.sql_model(**record.dict()) for record in tqdm(records, desc='Loading Records to SQL', position=0, unit=' records'))
         error_records = []
         records_to_load = []
         _loaded_counter = 0
@@ -36,29 +38,33 @@ class StateValidator:
                         _loaded_counter += len(records_to_load)
                     except Exception as e:
                         error_records.extend(records_to_load)
+                        db.rollback()
                     records_to_load = []
             db.add_all(records_to_load)
             db.commit()
             _loaded_counter += len(records_to_load)
 
     def validate(self, **kwargs):
-        passed, failed = [], []
+        self.passed, self.failed = [], []
         for record in tqdm(self.file.data, desc='Validating Records', position=0, unit=' records'):
             try:
                 r = self.validator(**record)
-                passed.append(r)
+                self.passed.append(r)
             except ValidationError as e:
-                failed.append({'error': e,
-                               'record': record})
+                self.failed.append(
+                    {
+                        'error': e,
+                        'record': record
+                    }
+                )
 
-            if self.kwargs.get('load_to_sql', False):
-                if len(passed) == 100000:
-                    self.load_file_to_sql(passed)
-                    passed = []
+            if self.kwargs.get('load_to_sql') is True:
+                if len(self.passed) == 100000:
+                    self.load_file_to_sql(self.passed)
+                    self.passed = []
 
-        if self.kwargs.get('load_to_sql', False) or kwargs.get('load_to_sql', False):
-            self.load_file_to_sql(passed)
-            return failed
+        if self.kwargs.get('load_to_sql') is True or kwargs.get('load_to_sql') is True:
+            self.load_file_to_sql(self.passed)
+            return self.failed
         else:
-            return passed, failed
-
+            return self.passed, self.failed

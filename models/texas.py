@@ -1,13 +1,13 @@
 from conf.postgres import Base
 from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, JSON
-from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy.dialects.postgresql import TIMESTAMP, BIGINT
 
 
 class TexasRecord(Base):
     __tablename__ = "nov2022_texas"
     __table_args__ = {'schema': 'texas'}
     COUNTY = Column(String, nullable=False)
-    VUID = Column(Integer, primary_key=True)
+    VUID = Column(BIGINT, primary_key=True)
     EDR = Column(Date, nullable=False)
     STATUS = Column(String, nullable=False)
     LNAME = Column(String, nullable=False)
@@ -36,5 +36,7 @@ class TexasRecord(Base):
     NEWHD = Column(Integer, nullable=False)
     NEWSD = Column(Integer, nullable=False)
     NEWCD = Column(Integer, nullable=False)
+    ABSTRACT_HASH = Column(String, nullable=False)
+    ABSTRACT_UUID = Column(String, nullable=False)
     ABSTRACT_UPDATE = Column(DateTime, nullable=False)
 

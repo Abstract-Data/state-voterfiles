@@ -16,30 +16,34 @@ from collections import Counter
 import json
 from utils.state_validator import StateValidator
 from conf.postgres import Base, engine, SessionLocal
+# from validatiors.validator_template import ValidatorTemplate
 
-Base.metadata.create_all(bind=engine)
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-
-db = SessionLocal()
 # db.rollback()
 
 def ohio_file():
-    ohio_cols = TomlReader(Path.cwd() / 'state_fields' / 'ohio-fields.toml').data
+    ohio_cols = TomlReader('Ohio', Path.cwd() / 'state_fields' / 'ohio-fields.toml').data
     ohio_vf = VoterFileLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
     return ohio_vf, ohio_cols
 
 
-tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+vf, cols = ohio_file()
 
-tx_validator = StateValidator(
-    file=tx,
-    validator=TexasValidator,
-    sql_model=TexasRecord,
-    load_to_sql=True)
+ohio = TomlReader('Ohio', Path.cwd() / 'state_fields' / 'ohio-fields.toml')
 
-tx_validator.validate()
+# data = [r for r in vf.data]
+
+# tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+#
+# tx_validator = StateValidator(
+#     file=tx,
+#     validator=TexasValidator,
+#     sql_model=TexasRecord)
+#
+# tx_validator.validate()
+# tx_validator.load_file_to_sql(tx_validator.passed)
 
 # valid, invalid = [], []
 #
