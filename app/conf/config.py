@@ -35,7 +35,6 @@ class CampaignFinanceConfig:
     CONTRIBUTION_FILE_PREFIX = STATE['STATE-FIELD-MAPPING']['file-prefixes']['contributions']
 
     VENDOR_NAME_COLUMN: str = STATE['FILE-VENDOR-PAYMENT-DETAILS']['name']
-    CONTRIBUTOR_NAME_COLUMN: str = STATE['FILE-CONTRIBUTOR-DETAILS']['name']
     FILER_NAME_COLUMN: str = STATE['FILE-FILER-DETAILS']['person']['formatted']
 
     PAYMENT_RECEIVED_DATE_COLUMN: str = STATE['STATE-FIELD-MAPPING']['columns']['date-time']['payment-received']
@@ -51,7 +50,6 @@ class CampaignFinanceConfig:
 
     DATE_COLUMNS = [PAYMENT_RECEIVED_DATE_COLUMN, EXPENDITURE_DATE_COLUMN, CONTRIBUTION_DATE_COLUMN]
     UPPERCASE_COLUMNS = [VENDOR_NAME_COLUMN, FILER_NAME_COLUMN]
-
 
     @staticmethod
     def create_file_category(kind: str, records: Generator) -> FileCategory:

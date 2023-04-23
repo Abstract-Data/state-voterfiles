@@ -165,7 +165,6 @@ class ResultCounter:
     _amount_field: str = field(init=False)
     _date_field: str = field(init=False)
     _filer_name_field: str = field(init=False)
-    _vendor_donor_name: str = field(init=False)
 
     @property
     def pandas_schema(self):
@@ -181,15 +180,13 @@ class ResultCounter:
         if self._data.__class__.__name__ == 'ContributionSearch':
             return CampaignFinanceConfig.CONTRIBUTION_AMOUNT_COLUMN, \
                 CampaignFinanceConfig.CONTRIBUTION_DATE_COLUMN, \
-                CampaignFinanceConfig.FILER_NAME_COLUMN, \
-                CampaignFinanceConfig.CONTRIBUTOR_NAME_COLUMN
+                CampaignFinanceConfig.FILER_NAME_COLUMN
         else:
             return CampaignFinanceConfig.EXPENDITURE_AMOUNT_COLUMN, \
                 CampaignFinanceConfig.EXPENDITURE_DATE_COLUMN, \
-                CampaignFinanceConfig.FILER_NAME_COLUMN, \
-                CampaignFinanceConfig.VENDOR_NAME_COLUMN
+                CampaignFinanceConfig.FILER_NAME_COLUMN
 
-    def by_year(self, df: pd.DataFrame = None, include_origin=False, include_total=True) -> pd.DataFrame:
+    def by_year(self, df: pd.DataFrame = None) -> pd.DataFrame:
         if not df:
             pass
         else:
@@ -200,19 +197,16 @@ class ResultCounter:
 
         _crosstab = pd.crosstab(
             columns=df[self._date_field].dt.year,
-            index=[
-                df[self._filer_name_field],
-                df[self._vendor_donor_name]
-            ] if include_origin else df[self._filer_name_field],
+            index=df[self._filer_name_field],
             values=df[self._amount_field],
             aggfunc='sum',
-            margins=include_total,
-            margins_name='Total' if include_total else None)
+            margins=True,
+            margins_name='Total')
         result = _crosstab.dropna(how='all', axis=0).fillna(0).applymap('${:,.2f}'.format)
         return result
 
     def __post_init__(self):
-        self._amount_field, self._date_field, self._filer_name_field, self._vendor_donor_name = self.get_fields()
+        self._amount_field, self._date_field, self._filer_name_field = self.get_fields()
 
 
 @dataclass
