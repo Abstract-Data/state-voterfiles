@@ -1,109 +1,314 @@
-# import hashlib
-# import uuid
-# from funcs.record_keygen import RecordKeyGenerator
-# from pydantic import BaseModel, ValidationError, validator, Field, root_validator, conint
-# from typing import Optional, Annotated, Dict, List
-# from datetime import date, datetime
-# import zipcodes
-# from utils.toml_reader import StateConfig
-#
-# # TODO: Fix StateConfig.data to be a dict of dicts
-# # TODO: Check to make sure the ElectionHistory validator is working as needed.
-# class ValidatorTemplate(BaseModel):
-#     vuid: str = Field(alias=StateConfig.data['PERSON-DETAILS.voter-info']['vuid'])
-#     edr: date = Field(alias=TomlReader.data['PERSON-DETAILS.voter-info']['registration_date'])
-#     status: str = Field(alias=TomlReader.data['PERSON-DETAILS.voter-info']['registration_status'])
-#     lname: str = Field(alias=TomlReader.data['PERSON-DETAILS.name']['last'])
-#     fname: str = Field(alias=TomlReader.data['PERSON-DETAILS.name']['first'])
-#     mname: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.name']['middle'])
-#     sfx: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.name']['suffix'])
-#     dob: date = Field(alias=TomlReader.data['PERSON-DETAILS.voter-info']['dob'])
-#     radr1: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['address1'])
-#     radr2: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['address2'])
-#     rcity: str = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['city'])
-#     rstate: str = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['state'])
-#     rzip: conint(ge=0, le=99999) = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['zip5'])
-#     rzip4: Optional[Annotated[int, Field(ge=0, le=9999)]] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['zip4'])
-#     rcountry: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['country'])
-#     rpostal_code: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.residence']['postal_code'])
-#     rhnum: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['house_number'])
-#     rdesig: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['house_direction'])
-#     rstname: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['street_name'])
-#     rsttype: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['street_type'])
-#     rstsfx: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['street_suffix'])
-#     runum: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['unit_number'])
-#     rutype: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['unit_type'])
-#     # rcity: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['city'])
-#     # rstate: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['state'])
-#     # rzip: Optional[Annotated[int, Field(ge=0, le=99999)]] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['zip'])
-#     # rzip4: Optional[Annotated[int, Field(ge=0, le=9999)]] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.parts.residence']['zip4'])
-#
-#     maddr1: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['address1'])
-#     maddr2: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['address2'])
-#     mcity: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['city'])
-#     mstate: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['state'])
-#     mzip: Optional[Annotated[int, Field(ge=0, le=99999)]] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['zip5'])
-#     mzip4: Optional[Annotated[int, Field(ge=0, le=9999)]] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['zip4'])
-#     mcountry: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['country'])
-#     mpostal_code: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.ADDRESS.mail']['postal_code'])
-#
-#     municipal_court_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['municipal_court_district'])
-#     court_of_appeals: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['court_of_appeals'])
-#     local_school_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['local_school_district'])
-#
-#     precinct_name: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['precinct']['name'])
-#     precinct_code: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['precinct']['code'])
-#
-#     city_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['city']['district'])
-#     city_school_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['city']['school_district'])
-#
-#     county_district_number: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['number'])
-#     county_district_id: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['id'])
-#     county_district_township: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['township'])
-#     county_district_village: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['village'])
-#     county_district_ward: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['ward'])
-#     county_district_library: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['library_district'])
-#     county_district_career_center: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['career_center'])
-#     county_district_court: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['court_district'])
-#     county_district_education_service_center: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['education_service_center'])
-#     county_district_exempted_village_school_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['county']['exempted_village_school_district'])
-#
-#     state_board_of_education: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['state']['board_of_edu'])
-#     state_representative_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['state']['lower_chamber'])
-#     state_senate_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['state']['upper_chamber'])
-#
-#     congressional_district: Optional[str] = Field(alias=TomlReader.data['PERSON-DETAILS.VOTING-DISTRICTS']['federal']['congressional'])
-#
-#     class Config:
-#         allow_population_by_field_name = True
-#         orm_mode = True
-#
-# class ElectionHistory(BaseModel):
-#     vuid: str = Field(alias=TomlReader.data['PERSON-DETAILS.voter-info']['vuid'])
-#     y2000: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2000'])
-#     y2001: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2001'])
-#     y2002: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2002'])
-#     y2003: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2003'])
-#     y2004: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2004'])
-#     y2005: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2005'])
-#     y2006: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2006'])
-#     y2007: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2007'])
-#     y2008: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2008'])
-#     y2009: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2009'])
-#     y2010: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2010'])
-#     y2011: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2011'])
-#     y2012: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2012'])
-#     y2013: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2013'])
-#     y2014: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2014'])
-#     y2015: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2015'])
-#     y2016: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2016'])
-#     y2017: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2017'])
-#     y2018: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2018'])
-#     y2019: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2019'])
-#     y2020: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2020'])
-#     y2021: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2021'])
-#     y2022: Optional[Dict] = Field(alias=TomlReader.data['ELECTION-DATES.y2022'])
+import uuid
+from funcs.record_keygen import RecordKeyGenerator
+from pydantic import ValidationError, validator, Field, root_validator, conint, BaseModel, create_model
+from pydantic.utils import GetterDict
+from typing import Optional, Annotated, Dict, List, Type
+from datetime import date, datetime
 
+from field_maps import texas
+
+# TODO: Fix StateConfig.data to be a dict of dicts
+# TODO: Check to make sure the ElectionHistory validator is working as needed.
+state = texas.data
+
+
+def update_county_name(values):
+    if values['\ufeffCOUNTY']:
+        values['COUNTY'] = values['\ufeffCOUNTY']
+    return values
+
+
+def clear_blank_strings(cls, values):
+    for k, v in values.items():
+        if v in ['', '"', 'null']:
+            values[k] = None
+    return values
+
+
+def validate_dates(v):
+    if v:
+        try:
+            return datetime.strptime(v, '%Y%m%d').date()
+        except ValueError or ValidationError:
+            raise ValueError(f'Invalid date format: {v}')
+
+
+def run_zip_validation(zip_code):
+    _length = len(str(zip_code))
+    if _length == 5 and str(_length).isnumeric():
+        zip5_col, zip4_col = zip_code, None
+    elif _length == 9 and str(_length).isnumeric():
+        zip5_col, zip4_col = zip_code[:5], zip_code[5:]
+    elif _length == 10 and '-' in zip_code:
+        zip5_col, zip4_col = zip_code.split('-')
+    else:
+        raise ValueError(f'Invalid zip code: {zip_code}')
+    return zip5_col, zip4_col
+
+
+class ValidatorSettings:
+    """Settings for pydantic validator."""
+    orm_mode = True
+    allow_population_by_field_name = True
+
+
+class SOSInfo(BaseModel):
+    vuid: str = Field(alias=state['PERSON-DETAILS']['voter-registration']['vuid'])
+    edr: date = Field(alias=state['PERSON-DETAILS']['voter-registration']['registration_date'])
+    status: Optional[str] = Field(alias=state['PERSON-DETAILS']['voter-registration']['registration_status'])
+    political_party: Optional[str] = Field(alias=state['PERSON-DETAILS']['voter-registration']['political_party'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+    _validate_edr = validator(state['PERSON-DETAILS']['voter-registration']['registration_date'],
+                              pre=True,
+                              allow_reuse=True,
+                              check_fields=False)(validate_dates)
+
+
+class PersonDetails(BaseModel):
+    first_name: str = Field(alias=state['PERSON-DETAILS']['name']['last'])
+    last_name: str = Field(alias=state['PERSON-DETAILS']['name']['first'])
+    middle_name: Optional[str] = Field(alias=state['PERSON-DETAILS']['name']['middle'])
+    suffix: Optional[str] = Field(alias=state['PERSON-DETAILS']['name']['suffix'])
+    dob: date = Field(alias=state['PERSON-DETAILS']['voter-registration']['dob'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+    _validate_dob = validator(state['PERSON-DETAILS']['voter-registration']['dob'],
+                              pre=True,
+                              allow_reuse=True,
+                              check_fields=False)(validate_dates)
+
+
+class RegisteredAddress(BaseModel):
+    address1: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['residence']['address1'])
+    address2: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['residence']['address2'])
+    city: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['residence']['city'])
+    state: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['residence']['state'])
+    zip: Optional[int] = Field(alias=state['PERSON-DETAILS']['address']['residence']['zip5'])
+    zip4: Optional[int] = Field(alias=state['PERSON-DETAILS']['address']['residence']['zip4'])
+    country: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['residence']['country'])
+    postal_code: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['residence']['postal_code'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    @root_validator(pre=True)
+    @classmethod
+    def validate_zip(cls, values):
+        _registration_zip = values.get(state['PERSON-DETAILS']['address']['residence']['zip5'], None)
+
+        if _registration_zip:
+            values['rzip'], values['rzip4'] = run_zip_validation(_registration_zip)
+
+        return values
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class RegisteredAddressParts(BaseModel):
+    house_number: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['house_number'])
+    house_direction: Optional[str] = Field(
+        alias=state['PERSON-DETAILS']['ADDRESS']['parts']['residence']['house_direction'])
+    street_name: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['street_name'])
+    street_type: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['street_type'])
+    street_suffix: Optional[str] = Field(
+        alias=state['PERSON-DETAILS']['address']['parts']['residence']['street_suffix'])
+    unit_number: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['unit_number'])
+    unit_type: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['unit_type'])
+    city: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['city'])
+    state: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['state'])
+    zip5: Optional[int] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['zip5'])
+    zip4: Optional[int] = Field(alias=state['PERSON-DETAILS']['address']['parts']['residence']['zip4'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+    @root_validator(pre=True)
+    @classmethod
+    def validate_zip(cls, values):
+        _registration_zip = values.get(state['PERSON-DETAILS']['address']['residence']['zip5'], None)
+
+        if _registration_zip:
+            values['rzip5'], values['rzip4'] = run_zip_validation(_registration_zip)
+
+        return values
+
+
+class MailingAddress(BaseModel):
+    address1: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['mail']['address1'])
+    address2: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['mail']['address2'])
+    city: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['mail']['city'])
+    state: Optional[str] = Field(alias=state['PERSON-DETAILS']['address']['mail']['state'])
+    zip5: Optional[int] = Field(alias=state['PERSON-DETAILS']['address']['mail']['zip5'])  # TODO: Fix TypeError for FieldInfo
+    zip4: Optional[int] = Field(alias=state['PERSON-DETAILS']['address']['mail']['zip4'])  # TODO: Fix TypeError for FieldInfo
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+    @root_validator(pre=True)
+    @classmethod
+    def validate_zip(cls, values):
+        _mailing_zip = values.get(state['PERSON-DETAILS']['address']['mail']['zip5'])
+
+        if _mailing_zip:
+            values['mzip5'], values['mzip4'] = run_zip_validation(_mailing_zip)
+
+        return values
+
+
+class CourtDistricts(BaseModel):
+    municipal: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['courts']['municipal'])
+    county: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['courts']['county'])
+    appeallate: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['courts']['appeallate'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class VotingPrecinct(BaseModel):
+    name: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['precinct']['name'])
+    number: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['precinct']['code'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class CityDistricts(BaseModel):
+    name: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['city']['name'])
+    school_district: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['city']['school_district'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class CountyDistricts(BaseModel):
+    number: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['number'])
+    county_id: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['id'])
+    township: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['township'])
+    village: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['village'])
+    ward: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['ward'])
+    local_school: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['local_school_district'])
+    library: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['library_district'])
+    career_center: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['county']['career_center'])
+    education_service_center: Optional[str] = Field(
+        alias=state['VOTING-DISTRICTS']['county']['education_service_center'])
+    exempted_village_school_district: Optional[str] = Field(
+        alias=state['VOTING-DISTRICTS']['county']['exempted_village_school_district'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class StateDistricts(BaseModel):
+    board_of_ed: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['state']['board_of_edu'])
+    legislative_lower: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['state']['legislative_lower'])
+    legislative_upper: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['state']['legislative_upper'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class FederalDistricts(BaseModel):
+    congressional: Optional[str] = Field(alias=state['VOTING-DISTRICTS']['federal']['congressional'])
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    _clear_blank_strings = root_validator(pre=True, allow_reuse=True)(clear_blank_strings)
+
+
+class RecordValidator(BaseModel):
+    sec_of_state: SOSInfo
+    voter_details: PersonDetails
+    address: Dict[str, RegisteredAddress and RegisteredAddressParts | MailingAddress]
+    # raddress: RegisteredAddress
+    # maddress: MailingAddress
+    # raddress_parts: RegisteredAddressParts
+    districts: Dict[
+        str, VotingPrecinct | CityDistricts | CourtDistricts | CountyDistricts | StateDistricts | FederalDistricts]
+    # court_districts: CourtDistricts
+    # voting_precinct: VotingPrecinct
+    # city_districts: CityDistricts
+    # county_districts: CountyDistricts
+    # state_districts: StateDistricts
+    # federal_districts: FederalDistricts
+    vuid: int = Field(alias=state['PERSON-DETAILS']['voter-registration']['vuid'])
+    ABSTRACT_HASH: str
+    ABSTRACT_UUID: uuid.UUID
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+    @root_validator(pre=True)
+    @classmethod
+    def generate_hash_uuid(cls, values):
+        _key_fields = values[state['PERSON-DETAILS']['name']['last']].lower() + \
+                      values[state['PERSON-DETAILS']['name']['first']].lower() + \
+                      str(values[state['PERSON-DETAILS']['voter-registration']['vuid']])
+        _record = RecordKeyGenerator(
+            record=_key_fields
+        )
+        values['ABSTRACT_HASH'] = _record.hash
+        values['ABSTRACT_UUID'] = _record.uid
+        return values
+
+# class ElectionHistory(BaseModel):
+#     vuid: str = Field(alias=x['PERSON-DETAILS']['voter-info']['vuid'])
+#     y2000: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2000'])
+#     y2001: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2001'])
+#     y2002: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2002'])
+#     y2003: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2003'])
+#     y2004: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2004'])
+#     y2005: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2005'])
+#     y2006: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2006'])
+#     y2007: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2007'])
+#     y2008: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2008'])
+#     y2009: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2009'])
+#     y2010: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2010'])
+#     y2011: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2011'])
+#     y2012: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2012'])
+#     y2013: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2013'])
+#     y2014: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2014'])
+#     y2015: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2015'])
+#     y2016: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2016'])
+#     y2017: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2017'])
+#     y2018: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2018'])
+#     y2019: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2019'])
+#     y2020: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2020'])
+#     y2021: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2021'])
+#     y2022: Optional[Dict] = Field(alias=x['ELECTION-DATES']['y2022'])
 
 # [ELECTION-DATES]
 # [ELECTION-DATES.Y2000]

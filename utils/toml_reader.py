@@ -1,25 +1,18 @@
 from pathlib import Path
 import tomli
-from typing import Protocol, Dict, ClassVar, Optional
+from typing import Protocol, Dict, ClassVar, Optional, TypedDict
 from dataclasses import dataclass, field
 from abc import abstractmethod, ABC, abstractproperty
 
-
-def load_data(path: Path) -> dict:
-    with open(path, 'rb') as f:
-        return tomli.load(f)
-
-
 @dataclass
 class TomlReader:
-    state: str
-    file: Path
+    _file: Path
+    data: Dict = field(init=False)
 
-    def __str__(self):
-        return f'{self.state} Toml Reader'
-
-    def __repr__(self):
-        return f'{self.state} Toml Reader'
+    def load_data(self):
+        with open(self._file, 'rb') as f:
+            return tomli.load(f)
 
     def __post_init__(self):
-        self.data: Dict = load_data(self.file)
+        self.data = self.load_data()
+
