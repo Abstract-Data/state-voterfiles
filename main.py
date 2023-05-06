@@ -1,25 +1,13 @@
-from utils.toml_reader import TomlReader
-from utils.csv_loader import VoterFileLoader
-from funcs.column_formats import VoterInfo
-from pathlib import Path
-from pydantic import create_model, validator, ValidationError, root_validator
-from typing import Optional
-from datetime import date
-from collections import Counter
-from pprint import pp
-import pandas as pd
-from validatiors.texas import TexasValidator
-from models.texas import TexasRecord
+from state_voterfiles.utils.toml_reader import TomlReader
+from state_voterfiles.utils.csv_loader import VoterFileLoader
+from state_voterfiles.validatiors.texas import TexasValidator
 from tqdm import tqdm
-import sys
-from collections import Counter
+import state_voterfiles.validatiors.validator_template as vt
+from state_voterfiles.models.texas_json import TexasJSON
+from pathlib import Path
+import pandas as pd
+from state_voterfiles.conf.postgres import SessionLocal, Base, engine
 import json
-from utils.state_validator import StateValidator
-from conf.postgres import Base, engine, SessionLocal
-import validatiors.validator_template as vt
-from pydantic.json import pydantic_encoder
-from funcs.scratch_8 import assign_fields
-from models.texas_json import TexasJSON
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -35,60 +23,59 @@ def ohio_file():
 
 # vf, cols = ohio_file()
 
+tx = VoterFileLoader(Path(__file__).parent / 'state_voterfiles' / 'voter_files' / 'texasnovember2022.csv')
 
-texas = TomlReader(Path.cwd() / 'state_fields' / 'texas-fields.toml')
+data = [x for x in tqdm(tx.data)]
 
-# tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+state = vt.STATE
+valid = []
+invalid = []
+
+test_data = data[0]
+test_model = vt.SOSInfo(**test_data)
+texas_validator = TexasValidator(**test_data)
+texas_validator_json = texas_validator.json(indent=4)
+for record in data[:1000]:
+    try:
+        r = vt.RecordValidator(**record,
+                               sec_of_state=vt.SOSInfo(**record),
+                               voter_details=vt.PersonDetails(**record),
+                               address=vt.AllAddresses(
+                                   raddress=vt.RegisteredAddress(**record),
+                                   raddress_parts=vt.RegisteredAddressParts(**record),
+                                   maddress=vt.MailingAddress(**record),
+                               ),
+                               # raddress=vt.RegisteredAddress(**record),
+                               # raddress_parts=vt.RegisteredAddressParts(**record),
+                               # maddress=vt.MailingAddress(**record),
+                               districts={
+                                   'precinct': vt.VotingPrecinct(**record),
+                                   'city': vt.CityDistricts(**record),
+                                   'courts': vt.CourtDistricts(**record),
+                                   'county': vt.CountyDistricts(**record),
+                                   'state': vt.StateDistricts(**record),
+                                   'federal': vt.FederalDistricts(**record),
+                               },
+
+                               # court_districts=vt.CourtDistricts(**record),
+                               # voting_precinct=vt.VotingPrecinct(**record),
+                               # city_districts=vt.CityDistricts(**record),
+                               # county_districts=vt.CountyDistricts(**record),
+                               # state_districts=vt.StateDistricts(**record),
+                               # federal_districts=vt.FederalDistricts(**record),
+                               )
+        valid.append(r)
+    except vt.ValidationError as e:
+        invalid.append({'error': e,
+                        'record': record})
 #
-# data = [x for x in tqdm(tx.data)]
-#
-# state = vt.state
-# valid = []
-# invalid = []
-#
-# test_data = data[0]
-# test_model = vt.SOSInfo(**test_data)
-# texas_validator = TexasValidator(**test_data)
-# texas_validator_json = texas_validator.json(indent=4)
-# # for record in data[:1000]:
-#     try:
-#         r = vt.RecordValidator(**record,
-#                                sec_of_state=vt.SOSInfo(**record),
-#                                voter_details=vt.PersonDetails(**record),
-#                                address={'raddress': vt.RegisteredAddress(**record),
-#                                         'raddress_parts': vt.RegisteredAddressParts(**record),
-#                                         'maddress': vt.MailingAddress(**record)},
-#                                # raddress=vt.RegisteredAddress(**record),
-#                                # raddress_parts=vt.RegisteredAddressParts(**record),
-#                                # maddress=vt.MailingAddress(**record),
-#                                districts={
-#                                    'precinct': vt.VotingPrecinct(**record),
-#                                    'city': vt.CityDistricts(**record),
-#                                    'courts': vt.CourtDistricts(**record),
-#                                    'county': vt.CountyDistricts(**record),
-#                                    'state': vt.StateDistricts(**record),
-#                                    'federal': vt.FederalDistricts(**record),
-#                                },
-#
-#                                # court_districts=vt.CourtDistricts(**record),
-#                                # voting_precinct=vt.VotingPrecinct(**record),
-#                                # city_districts=vt.CityDistricts(**record),
-#                                # county_districts=vt.CountyDistricts(**record),
-#                                # state_districts=vt.StateDistricts(**record),
-#                                # federal_districts=vt.FederalDistricts(**record),
-#                                )
-#         valid.append(r)
-#     except ValidationError as e:
-#         invalid.append({'error': e,
-#                         'record': record})
-#
-# session = SessionLocal()
-# # Base.metadata.create_all(engine)
-# # valid_json = [x.json() for x in valid]
-# # valid_json_dict = [json.loads(x) for x in valid_json]
-# # models = [TexasJSON(**x) for x in valid_json_dict]
-# # session.add_all(models)
-# # session.commit()
+session = SessionLocal()
+Base.metadata.create_all(engine)
+valid_json = [x.json() for x in valid]
+valid_json_dict = [json.loads(x) for x in valid_json]
+models = [TexasJSON(**x) for x in valid_json_dict]
+session.add_all(models)
+session.commit()
 # #
 # # session.rollback()
 # texas_return = iter(session.query(TexasJSON).all())

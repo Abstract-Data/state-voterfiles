@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["John R. Eakin <johnreakin@gmail.com>"]
 readme = "README.md"
+packages = [{include = "state_voterfiles"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"

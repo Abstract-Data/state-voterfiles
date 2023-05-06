@@ -13,8 +13,8 @@ title: State Voter File Reader & Validator
 ## Example
 
 ```py title="main.py"
-from utils.toml_reader import TomlReader
-from utils.csv_loader import VoterFileLoader
+from state_voterfiles.utils import TomlReader
+from state_voterfiles.utils import VoterFileLoader
 
 tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
 
