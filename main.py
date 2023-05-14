@@ -1,5 +1,5 @@
 from state_voterfiles.utils.toml_reader import TomlReader
-from state_voterfiles.utils.csv_loader import VoterFileLoader
+from state_voterfiles.utils.csv_loader import CSVLoader
 from state_voterfiles.validatiors.texas import TexasValidator
 from tqdm import tqdm
 import state_voterfiles.validatiors.validator_template as vt
@@ -8,6 +8,8 @@ from pathlib import Path
 import pandas as pd
 from state_voterfiles.conf.postgres import SessionLocal, Base, engine
 import json
+from state_voterfiles.funcs.json_funcs import flatten_json
+from state_voterfiles.funcs.validation import ValidateFile
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -16,66 +18,52 @@ pd.set_option('display.max_rows', None)
 # db.rollback()
 
 def ohio_file():
-    ohio_cols = TomlReader(Path.cwd() / 'state_fields' / 'ohio-fields.toml').data
-    ohio_vf = VoterFileLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
+    ohio_cols = TomlReader(Path.cwd() / 'field_references' / 'ohio-fields.toml').data
+    ohio_vf = CSVLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
     return ohio_vf, ohio_cols
 
 
 # vf, cols = ohio_file()
 
-tx = VoterFileLoader(Path(__file__).parent / 'state_voterfiles' / 'voter_files' / 'texasnovember2022.csv')
+tx = CSVLoader(Path(__file__).parent / 'state_voterfiles' / 'voter_files' / 'texasnovember2022.csv')
 
-data = [x for x in tqdm(tx.data)]
+data = tx.load()
 
-state = vt.STATE
-valid = []
-invalid = []
+texas_test_file = ValidateFile(data[:1000])
+texas_test_file.validate()
 
-test_data = data[0]
-test_model = vt.SOSInfo(**test_data)
-texas_validator = TexasValidator(**test_data)
-texas_validator_json = texas_validator.json(indent=4)
-for record in data[:1000]:
-    try:
-        r = vt.RecordValidator(**record,
-                               sec_of_state=vt.SOSInfo(**record),
-                               voter_details=vt.PersonDetails(**record),
-                               address=vt.AllAddresses(
-                                   raddress=vt.RegisteredAddress(**record),
-                                   raddress_parts=vt.RegisteredAddressParts(**record),
-                                   maddress=vt.MailingAddress(**record),
-                               ),
-                               # raddress=vt.RegisteredAddress(**record),
-                               # raddress_parts=vt.RegisteredAddressParts(**record),
-                               # maddress=vt.MailingAddress(**record),
-                               districts={
-                                   'precinct': vt.VotingPrecinct(**record),
-                                   'city': vt.CityDistricts(**record),
-                                   'courts': vt.CourtDistricts(**record),
-                                   'county': vt.CountyDistricts(**record),
-                                   'state': vt.StateDistricts(**record),
-                                   'federal': vt.FederalDistricts(**record),
-                               },
-
-                               # court_districts=vt.CourtDistricts(**record),
-                               # voting_precinct=vt.VotingPrecinct(**record),
-                               # city_districts=vt.CityDistricts(**record),
-                               # county_districts=vt.CountyDistricts(**record),
-                               # state_districts=vt.StateDistricts(**record),
-                               # federal_districts=vt.FederalDistricts(**record),
-                               )
-        valid.append(r)
-    except vt.ValidationError as e:
-        invalid.append({'error': e,
-                        'record': record})
+# for record in data[:1000]:
+#     try:
+#         r = vt.RecordValidator(**record,
+#                                sec_of_state=vt.SOSInfo(**record),
+#                                voter_details=vt.PersonDetails(**record),
+#                                address=vt.AllAddresses(
+#                                    raddress=vt.RegisteredAddress(**record),
+#                                    raddress_parts=vt.RegisteredAddressParts(**record),
+#                                    maddress=vt.MailingAddress(**record),
+#                                ),
+#                                # raddress=vt.RegisteredAddress(**record),
+#                                # raddress_parts=vt.RegisteredAddressParts(**record),
+#                                # maddress=vt.MailingAddress(**record),
+#                                districts=vt.AllDistricts(
+#                                    precinct=vt.VotingPrecinct(**record),
+#                                    city=vt.CityDistricts(**record),
+#                                    court=vt.CourtDistricts(**record),
+#                                    county=vt.CountyDistricts(**record),
+#                                    state=vt.StateDistricts(**record),
+#                                    federal=vt.FederalDistricts(**record))
+#                                )
+#         valid.append(r)
+#     except vt.ValidationError as e:
+#         invalid.append({'error': e,
+#                         'record': record})
 #
-session = SessionLocal()
-Base.metadata.create_all(engine)
-valid_json = [x.json() for x in valid]
-valid_json_dict = [json.loads(x) for x in valid_json]
-models = [TexasJSON(**x) for x in valid_json_dict]
-session.add_all(models)
-session.commit()
+# session = SessionLocal()
+# Base.metadata.create_all(engine)
+
+# models = [TexasJSON(**x) for x in valid_json_dict]
+# session.add_all(models)
+# session.commit()
 # #
 # # session.rollback()
 # texas_return = iter(session.query(TexasJSON).all())

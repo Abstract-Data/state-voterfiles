@@ -10,7 +10,7 @@ from pathlib import Path
 Each object feeds into the `VoterInfo` object, which turns each column within a states .toml into reference vars. 
 
 EXAMPLE:
-{'_VoterInfo__state': PosixPath('/Users/johneakin/PyCharmProjects/state-voterfiles/state_fields/texas-fields.toml'),
+{'_VoterInfo__state': PosixPath('/Users/johneakin/PyCharmProjects/state-voterfiles/field_references/texas-fields.toml'),
  '_data': {'voter-info': {'vuid': 'VUID',
    'registration_date': 'EDR',
    'registration_status': 'STATUS',

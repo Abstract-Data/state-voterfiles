@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 
 @dataclass
-class VoterFileLoader:
+class CSVLoader:
     def __init__(self, file: Path, **kwargs):
         self._file = file
         self._data = field(init=False)
@@ -52,6 +52,9 @@ class VoterFileLoader:
                     updated_record[k] = v
             _updated_data[index] = updated_record
         return _updated_data
+
+    def load(self):
+        return [x for x in tqdm(self.data)]
 
 
 

@@ -301,6 +301,19 @@ class AllAddresses(BaseModel):
         allow_population_by_field_name = True
 
 
+class AllDistricts(BaseModel):
+    precinct: VotingPrecinct
+    city: CityDistricts
+    court: CourtDistricts
+    county: CountyDistricts
+    state: StateDistricts
+    federal: FederalDistricts
+
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
+
 class RecordValidator(BaseModel):
     sec_of_state: SOSInfo
     voter_details: PersonDetails
@@ -308,8 +321,7 @@ class RecordValidator(BaseModel):
     # raddress: RegisteredAddress
     # maddress: MailingAddress
     # raddress_parts: RegisteredAddressParts
-    districts: Dict[
-        str, VotingPrecinct | CityDistricts | CourtDistricts | CountyDistricts | StateDistricts | FederalDistricts]
+    districts: AllDistricts
     # court_districts: CourtDistricts
     # voting_precinct: VotingPrecinct
     # city_districts: CityDistricts
