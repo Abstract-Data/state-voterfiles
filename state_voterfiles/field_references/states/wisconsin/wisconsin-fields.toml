@@ -1,0 +1,58 @@
+[SETTINGS]
+FIELD-FORMATTING.date = '%m/%d/%Y'
+STATE.abbreviation = "WI"
+remove-chars.legislative_upper = 'STATE SENATE - DISTRICT'
+remove-chars.legislative_lower = 'STATE ASSEMBLY - DISTRICT'
+remove-chars.state_court_of_appeals = 'COURT OF APPEALS - DISTRICT'
+remove-chars.federal_congressional = 'CONGRESSIONAL - DISTRICT'
+
+[FIELDS]
+voter_vuid = "VOTER REG NUMBER"
+voter_registration_status = "VOTER STATUS"
+voter_registration_status_reason = "VOTER STATUS REASON"
+voter_registration_date = "REGISTRATIONDATE"
+voter_registration_application_source = "APPLICATION SOURCE"
+voter_registration_permanent_absentee = "IS PERMANENT ABSENTEE"
+voter_registration_type = "VOTER TYPE"
+
+person_name_last = "LASTNAME"
+person_name_first = "FIRSTNAME"
+person_name_middle = "MIDDLENAME"
+person_name_suffix = "SUFFIX"
+
+residence_address1 = "ADDRESS1"
+residence_address2 = "ADDRESS2"
+residence_city = "ADDRESSCITY"
+residence_state = "ADDRESSSTATE"
+residence_zip5 = "ADDRESSZIP"
+residence_parts_house_number = "HOUSENUMBER"
+residence_parts_street_name = "STREETNAME"
+residence_parts_unit_type = "UNITTYPE"
+residence_parts_unit_number = "UNITNUMBER"
+
+mail_address1 = "MAILINGADDRESS1"
+mail_address2 = "MAILINGADDRESS2"
+mail_city = "MAILINGCITYSTATEZIP"
+
+contact_phone_unknown1 = "PHONENUMBER"
+
+district_state_juristidction = "JURISDICTION"
+district_state_district_combo = "DISTRICTCOMBO"
+district_county_ward = "WARD"
+district_federal_congressional = "CONGRESSIONAL"
+district_state_upper = "STATE SENATE"
+district_state_lower = "STATE ASSEMBLY"
+district_state_court_of_appeals = "COURT OF APPEALS"
+district_state_multijurisdictional_judge = "MULTI-JURISDICTIONAL JUDGE"
+district_county_name = "COUNTY"
+district_county_supervisory = "COUNTY SUPERVISORY"
+district_city_municipality = "MUNICIPALITY"
+district_county_school = "SCHOOL"
+district_county_sanitary = "SANITARY"
+district_county_technical_college = "TECHNICAL COLLEGE"
+district_county_representational_school = "REPRESENTATIONAL SCHOOL"
+district_state = "STATE"
+district_county_district_attorney = "DISTRICT ATTORNEY"
+district_state_circuit_court = "CIRCUIT COURT"
+district_county_first_class_school = "FIRST CLASS SCHOOL"
+district_city_incorporation = "INCORPORATION"

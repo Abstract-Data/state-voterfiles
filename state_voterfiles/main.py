@@ -1,36 +1,67 @@
-from state_voterfiles.utils.toml_reader import TomlReader
-from state_voterfiles.utils.csv_loader import CSVLoader
-from state_voterfiles.validatiors.texas import TexasValidator
-from tqdm import tqdm
-import state_voterfiles.validatiors.validator_template as vt
-from state_voterfiles.models.texas_json import TexasJSON
-from pathlib import Path
-import pandas as pd
-from state_voterfiles.conf.postgres import SessionLocal, Base, engine
-import json
-from state_voterfiles.funcs.json_funcs import flatten_json
-from state_voterfiles.funcs.validation import ValidateFile
-
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
+from state_tools import SetupState, StateVoterFile
 
 
-# db.rollback()
+texas = SetupState('texas')
 
-def ohio_file():
-    ohio_cols = TomlReader(Path.cwd() / 'field_references' / 'ohio-fields.toml').data
-    ohio_vf = CSVLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
-    return ohio_vf, ohio_cols
+tx = StateVoterFile('texas')
+pa = StateVoterFile('pennsylvania')
+mt = StateVoterFile('montana')
 
 
-# vf, cols = ohio_file()
+def test_validation(state: StateVoterFile):
+    state.read()
+    state.validate()
 
-tx = CSVLoader(Path(__file__).parent / 'state_voterfiles' / 'voter_files' / 'texasnovember2022.csv')
+    test_list = []
+    counter = 0
+    for r in state.validation.valid:
+        counter += 1
+        test_list.append(r)
+        if counter > 100:
+            break
+    return test_list
 
-data = tx.load()
 
-texas_test_file = ValidateFile(data[:1000])
-texas_test_file.validate()
+tx_test = test_validation(tx)
+pa_test = test_validation(pa)
+mt_test = test_validation(mt)
+
+
+
+
+# from state_voterfiles.utils.toml_reader import TomlReader
+# from state_voterfiles.utils.csv_loader import CSVLoader
+# from state_voterfiles.validatiors.texas import TexasValidator
+# from tqdm import tqdm
+# import state_voterfiles.validatiors.validator_template as vt
+# from state_voterfiles.models.texas_json import TexasJSON
+# from pathlib import Path
+# import pandas as pd
+# from state_voterfiles.conf.postgres import SessionLocal, Base, engine
+# import json
+# from state_voterfiles.funcs.json_funcs import flatten_json
+# from state_voterfiles.funcs.validation import ValidateFile
+#
+# pd.set_option('display.max_columns', None)
+# pd.set_option('display.max_rows', None)
+#
+#
+# # db.rollback()
+#
+# def ohio_file():
+#     ohio_cols = TomlReader(Path.cwd() / 'field_references' / 'ohio-fields.toml').data
+#     ohio_vf = CSVLoader(Path.cwd() / 'voter_files/202303 - HANCOCK OH VOTER REG.txt')
+#     return ohio_vf, ohio_cols
+#
+#
+# # vf, cols = ohio_file()
+#
+# tx = CSVLoader(Path(__file__).parent / 'state_voterfiles' / 'voter_files' / 'texasnovember2022.csv')
+#
+# data = tx.load()
+#
+# texas_test_file = ValidateFile(data[:1000])
+# texas_test_file.validate()
 
 # for record in data[:1000]:
 #     try:

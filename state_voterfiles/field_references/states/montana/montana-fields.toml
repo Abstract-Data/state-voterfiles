@@ -1,0 +1,56 @@
+[SETTINGS]
+FIELD-FORMATTING.date = "%m/%d/%Y"
+FILE-ENCODING.type = "null"
+VOTER-ID.min-length = "null"
+VOTER-ID.max-length = "null"
+STATE.abbreviation = "MT"
+
+[SETTINGS.REMOVE-CHARS]
+SENATE-DISTRICT = ["SENATE DISTRICT ", "district_state_legislative_upper"]
+HOUSE-DISTRICT = ["HOUSE DISTRICT ", "district_state_legislative_lower"]
+
+[FIELDS]
+voter_vuid = 'VTRID'
+voter_registration_date = 'VOTE_ELIGIBLE_DATE'
+voter_registration_status = 'VOTER_STATUS'
+voter_registration_status_reason = 'VOTER_STATUS_REASON'
+voter_precinct_number = 'PREC_CODE'
+voter_precinct_name = 'PRECINCT'
+voter_absentee = 'ABSENTEE'
+
+person_name_first = 'FIRSTNAME'
+person_name_middle = 'MIDDLENAME'
+person_name_last = 'LASTNAME'
+person_dob = 'DOB'
+
+residence_standardized = "RESIDENCEADDRESS"
+
+residence_part_house_number = 'RA_HS_NUM'
+residence_part_house_direction = 'RA_STDIR_CODE'
+residence_part_street_name = 'RA_STREET_NAME'
+residence_part_street_type = 'RA_STTYPE'
+residence_part_street_suffix = 'RA_STDIR_CODE_POST'
+residence_part_unit_number = 'RA_UNIT_NUM'
+residence_part_unit_type = 'RA_UTYP_CODE'
+residence_part_city = 'RA_CITY'
+residence_part_state = 'RA_STATE'
+residence_part_zip5 = "RA_ZIP_CODE"
+
+
+mail_address1 = 'MA_ADDR_LINE_1'
+mail_city = 'MA_CITY'
+mail_state = 'MA_STATE'
+mail_zip5 = 'MA_ZIP_CODE'
+mail_zip4 = 'MA_ZIP_PLUS'
+mail_standardized = "MAILINGADDRESS"
+
+district_city_limits = 'CITY_LIMITS'
+district_county_number = 'CURRENT_COUNTY'
+district_county_ward = 'ward'
+
+district_state_legislative_lower = 'HOUSE_DISTRICT'
+district_state_legislative_upper = 'SENATE_DISTRICT'
+
+district_federal_congressional = 'CONGRESS_DISTRICT'
+
+contact_phone_unknown1 = 'PHONE_NO'

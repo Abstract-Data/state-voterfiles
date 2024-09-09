@@ -1,0 +1,59 @@
+[SETTINGS]
+FIELD-FORMATTING.date = ['%Y-%m-%d', '%Y%m%d']
+STATE.abbreviation = 'OH'
+
+[FIELDS]
+voter_vuid = 'SOS_VOTERID'
+voter_registration_date = 'REGISTRATION_DATE'
+voter_registration_status = 'VOTER_STATUS'
+voter_political_party = 'PARTY_AFFILIATION'
+voter_precinct_name ='PRECINCT_NAME'
+voter_precinct_number = 'PRECINCT_CODE'
+
+person_name_last = 'LAST_NAME'
+person_name_first= 'FIRST_NAME'
+person_name_middle = 'MIDDLE_NAME'
+person_name_suffix = 'SUFFIX'
+person_dob = 'DATE_OF_BIRTH'
+
+residence_address1 = 'RESIDENTIAL_ADDRESS1'
+residence_address2 = 'RESIDENTIAL_SECONDARY_ADDR'
+residence_city = 'RESIDENTIAL_CITY'
+residence_state = 'RESIDENTIAL_STATE'
+residence_zip5 = 'RESIDENTIAL_ZIP'
+residence_zip4 = 'RESIDENTIAL_ZIP_PLUS4'
+residence_country = 'RESIDENTIAL_COUNTRY'
+residence_postal_code = 'RESIDENTIAL_POSTALCODE'
+
+mail_address1 = 'MAILING_ADDRESS1'
+mail_address2 = 'MAILING_SECONDARY_ADDRESS'
+mail_city = 'MAILING_CITY'
+mail_state = 'MAILING_STATE'
+mail_zip5 = 'MAILING_ZIP'
+mail_zip4 = 'MAILING_ZIP_PLUS4'
+mail_country = 'MAILING_COUNTRY'
+mail_postal_code = 'MAILING_POSTAL_CODE'
+
+district_court_municipal = 'MUNICIPAL_COURT_DISTRICT'
+district_court_county = 'COUNTY_COURT_DISTRICT'
+district_court_appeallate = 'COURT_OF_APPEALS'
+
+district_city_name = 'CITY'
+district_city_school_district = 'CITY_SCHOOL_DISTRICT'
+
+district_county_number = 'COUNTY_NUMBER'
+district_county_id = 'COUNTY_ID'
+district_county_township = 'TOWNSHIP'
+district_county_village = 'VILLAGE'
+district_county_ward = 'WARD'
+district_county_local_school_district = 'LOCAL_SCHOOL_DISTRICT'
+district_county_library_district = 'LIBRARY'
+district_county_career_center = 'CAREER_CENTER'
+district_county_education_service_center = 'EDU_SERVICE_CENTER_DISTRICT'
+district_county_exempted_village_school_district = 'EXEMPTED_VILL_SCHOOL_DISTRICT'
+
+district_state_board_of_education = 'STATE_BOARD_OF_EDUCATION'
+district_state_legislative_lower = 'STATE_REPRESENTATIVE_DISTRICT'
+district_state_legislative_upper = 'STATE_SENATE_DISTRICT'
+
+district_federal_congressional = 'CONGRESSIONAL_DISTRICT'

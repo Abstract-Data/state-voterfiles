@@ -1,0 +1,271 @@
+[SETTINGS]
+    STATE.abbreviation = "TX"
+    FILE-TYPE = "voterfile"
+    FIELD-FORMATTING.date = "%Y%m%d"
+    FILE-ENCODING.type = "utf-8-sig"
+    [SETTINGS.VOTER-ID]
+        min-length = 10
+        max-length = 10
+    [SETTINGS.ELECTION.TYPE]
+        primary.column_startswith = "PRI"
+        primary.ballot_type.republican = "R"
+        primary.ballot_type.democrat = "D"
+        general.column_startswith = "GEN"
+        general.ballot_type.general = "R"
+    [SETTINGS.ELECTION.VOTING_METHODS]
+        early = "E"
+        absentee = "A"
+        election_day = "V"
+    [SETTINGS.ELECTION.PARTY]
+        republican = "R"
+        democrat = "D"
+    [SETTINGS.ELECTION.LISTS]
+        election_types = ['PRI', 'GEN']
+        vote_methods = ['VE', 'VA', 'V', 'RE', 'RA', 'R', 'DE', 'DA', 'D']
+#ELECTION.LISTS.election_types = ['PRI', 'GEN']
+#ELECTION.LISTS.vote_methods = ['VE', 'VA', 'V', 'RE', 'RA', 'R', 'DE', 'DA', 'D']
+
+[FIELDS]
+    voter_vuid = "VUID"
+    voter_registration_date = "EDR"
+    voter_registration_status = "STATUS"
+    voter_precinct_number = "PCT"
+    voter_precinct_name = "PCTNAME"
+    voter_county = 'COUNTY'
+
+    person_name_last = "LNAME"
+    person_name_first = "FNAME"
+    person_name_middle = "MNAME"
+    person_name_suffix = "SFX"
+    person_dob = "DOB"
+    person_gender = "SEX"
+
+    residence_part_number = "RHNUM"
+    residence_part_number_suffix = "RDESIG"
+    residence_part_street_name = "RSTNAME"
+    residence_part_street_type = "RSTTYPE"
+    residence_part_street_post_type = ["RSTSFX"]
+    residence_part_unit_number = "RUNUM"
+    residence_part_unit_type = "RUTYPE"
+    residence_part_city = "RCITY"
+    residence_part_state = "RSTATE"
+    residence_part_zip5 = "RZIP"
+
+    mail_address1 = "MADR1"
+    mail_address2 = "MADR2"
+    mail_city = "MCITY"
+    mail_state = "MST"
+    mail_zip5 = "MZIP"
+
+    district_state_legislative_lower = "NEWHD"
+    district_state_legislative_upper = "NEWSD"
+
+    district_federal_congressional = "NEWCD"
+
+
+
+
+#[SETTINGS.FIELD-DEFINITIONS.REGISTRATION-STATUS]
+#active = "V"
+#suspended = "S"
+#canceled = "C"
+#
+#[SETTINGS.FIELD-DEFINITIONS.HISPANIC-SURNAME]
+#yes = "Y"
+#no = "null"
+#
+#[SETTINGS.FIELD-DEFINITIONS.ELECTION-TYPE]
+#general = "GE"
+#primary = "CP"
+#runoff = "RU"
+#special = "SE"
+#local = "LO"
+#open-primary = "PO"
+#local-runoff = "LR"
+#
+#[SETTINGS.FIELD-DEFINITIONS.VOTING-METHOD]
+#early = "EV"
+#election-day = "ED"
+#absentee.ballot-received = "AB"
+#absentee.rejected = "AX"
+#absentee.accepted = "AV"
+#provisional.accepted = "PB"
+#provisional.rejected = "PX"
+#
+#[VOTER-REGISTRATION]
+#vuid = "VUID"
+#registration_date = "EDR"
+#registration_status = "STATUS"
+#political_party = "null"
+#dob = "DOB"
+#[NAME]
+#last = "LNAME"
+#first= "FNAME"
+#middle = "MNAME"
+#suffix = "SFX"
+#
+#[ADDRESS.residence]
+#address1 = "null"
+#address2 = "null"
+#city = "null"
+#state = "null"
+#zip5 = "null"
+#zip4 = "null"
+#country = "null"
+#postal_code = "null"
+#
+#[ADDRESS.mail]
+#address1 = "MADR1"
+#address2 = "MADR2"
+#city = "MCITY"
+#state = "MST"
+#zip5 = "MZIP"
+#zip4 = "MZIP4"
+#country = "null"
+#postal_code = "null"
+#
+#[ADDRESS.parts.residence]
+#house_number = "RHNUM"
+#house_direction = "RDESIG"
+#street_name = "RSTNAME"
+#street_type = "RSTTYPE"
+#street_suffix = "RSTSFX"
+#unit_number = "RUNUM"
+#unit_type = "RUTYPE"
+#city = "RCITY"
+#state = "null"
+#zip5 = "RZIP"
+#zip4 = "RZIP4"
+#
+#
+#[VOTING-DISTRICTS.courts]
+#municipal = "null"
+#county = "null"
+#appeallate = "null"
+#[VOTING-DISTRICTS.precinct]
+#name = "null"
+#code = "PCT"
+#[VOTING-DISTRICTS.city]
+#name = "null"
+#school_district = "null"
+#
+#[VOTING-DISTRICTS.county]
+#number = "null"
+#id = "null"
+#township = "null"
+#village = "null"
+#ward = "null"
+#local_school_district = "null"
+#library_district = "null"
+#career_center = "null"
+#education_service_center = "null"
+#exempted_village_school_district = "null"
+#[VOTING-DISTRICTS.state]
+#board_of_edu = "null"
+#legislative_lower = "NEWHD"
+#legislative_upper = "NEWSD"
+#[VOTING-DISTRICTS.federal]
+#congressional = "NEWCD"
+#
+#[ELECTION-DATES]
+#[ELECTION-DATES.Y2000]
+#primary.march = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2001]
+#special.may = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2002]
+#primary.may = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2003]
+#special.may = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2004]
+#primary.march = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2005]
+#special.february = "null"
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2006]
+#special.february = "null"
+#primary.may = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2007]
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#primary.november = "null"
+#general.december = "null"
+#[ELECTION-DATES.Y2008]
+#primary.march = "null"
+#primary.october = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2009]
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2010]
+#primary.may = "null"
+#primary.july = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2011]
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2012]
+#primary.march = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2013]
+#primary.may = "null"
+#primary.september = "null"
+#primary.october = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2014]
+#primary.may = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2015]
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2016]
+#primary.march = "null"
+#general.june = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2017]
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2018]
+#primary.may = "null"
+#general.august = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2019]
+#primary.may = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2020]
+#primary.march = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2021]
+#primary.may = "null"
+#primary.august = "null"
+#primary.september = "null"
+#general.november = "null"
+#[ELECTION-DATES.Y2022]
+#primary.may = "null"
+#primary.august = "null"
+#general.november = "null"
+#
+#[PARTY-AFFILIATIONS]
+#C = "null"
+#D = "null"
+#E = "null"
+#G = "null"
+#L = "null"
+#N = "null"
+#R = "null"
+#S = "null"
+#X = "null"
