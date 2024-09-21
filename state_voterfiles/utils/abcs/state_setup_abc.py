@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 from icecream import ic
 from functools import partial
 
@@ -29,6 +29,8 @@ class SetupStateABC:
         setup_voterfile_folder() -> Path: Sets up the voterfile folder.
     """
     state: str
+    city: Optional[str] = field(default=None)
+    county: Optional[str] = field(default=None)
     target_example: Dict = field(init=False)
     voterfile_example: Dict = field(init=False)
     target_headers: List[str] = field(init=False)
@@ -39,7 +41,12 @@ class SetupStateABC:
     # _logfire_span: logfire.span = None
 
     def __post_init__(self):
-        self.voterfile_folder = VOTERFILE_RECORD_FOLDER(self.state)
+        if not self.city or self.county:
+            self.voterfile_folder = VOTERFILE_RECORD_FOLDER(self.state)
+        elif self.city:
+            self.voterfile_folder = VOTERFILE_RECORD_FOLDER(self.state) / f'{self.state.lower()}-city-{self.city.lower()}'
+        elif self.county:
+            self.voterfile_folder = VOTERFILE_RECORD_FOLDER(self.state) / f'{self.state.lower()}-county-{self.county.lower()}'
 
 
     # @property

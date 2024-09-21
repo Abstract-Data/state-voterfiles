@@ -1,0 +1,82 @@
+[SETTINGS]
+    STATE.abbreviation = "TX"
+    CITY.name = "Austin"
+    FILE-TYPE = "voterfile"
+    FIELD-FORMATTING.date = "%m/%d/%Y"
+    download_url = "https://tax-office.traviscountytx.gov/voterdata/VoterRegOpenDataWithHistoryCSV.zip"
+#    FILE-ENCODING.type = "utf-8-sig"
+    [SETTINGS.VOTER-ID]
+        min-length = 10
+        max-length = 10
+    [SETTINGS.ELECTION.TYPE]
+        primary = "P"
+        primary_runoff = "PR"
+        general = "G"
+        general_runoff = "GR"
+        government_authority = "GA"
+        government_local = "GL"
+        special = "SE"
+        congressional_boundary = "CB"
+        local = "L"
+        local_runoff = 'LR'
+    [SETTINGS.ELECTION.VOTING_METHODS]
+        early = "E"
+        absentee = "A"
+        election_day = "V"
+    [SETTINGS.ELECTION.PARTY]
+        republican = "REP"
+        democrat = "DEM"
+    [SETTINGS.ELECTION.LISTS]
+        election_types = ['P', 'PR', 'G', 'GR', 'GA', 'GL', 'SE', 'CB', 'L', 'LR']
+#        vote_methods = ['VE', 'VA', 'V', 'RE', 'RA', 'R', 'DE', 'DA', 'D']
+
+
+[FIELDS]
+    voter_vuid = "VUIDNO"
+    voter_precinct_code = "PCTCOD"
+    voter_precinct_split = "PCTSPT"
+    voter_registration_date = "EDRDAT"
+
+    person_gender = "GENDER"
+    person_name_prefix = "NAMPFX"
+    person_name_first = "FSTNAM"
+    person_name_middle = "MIDNAM"
+    person_name_last = "LSTNAM"
+
+    residence_part_street_number = "BLKNUM"
+    residence_part_street_pre_directional = "STRPRE"
+    residence_part_street_direction = "STRDIR"
+    residence_part_street_name = "STRNAM"
+    residence_part_street_type = "STRTYP"
+    residence_part_unit_type= "UNITYP"
+    residence_part_unit_number = "UNITNO"
+    residence_part_city = "RSCITY"
+    residence_part_state = "RSTATE"
+    residence_part_zip5 = "RZIPCD"
+    residence_part_zip4 = "RZIP+4"
+    residence_address_id = "ADDRID"
+    residence_effective_date = "REFDAT"
+
+    mail_address1 = "MLADD1"
+    mail_address2 = "MLADD2"
+    mail_city = "MLCITY"
+    mail_state = "MLSTAT"
+    mail_zip5 = "MLZIPCD"
+    mail_zip4 = "MZIP+4"
+    mail_country = "MLCTRY"
+    mail_change_date = "MCHGDT"
+
+    district_federal_congressional = "DIST01"
+    district_state_legislative_upper = "DIST02"
+    district_state_legislative_lower = "DIST03"
+    district_county_commissioner_precinct = "DIST04"
+    district_city_municipality = "DIST05"
+    district_county_constable_precinct = "DIST06"
+    district_county_school_district = "DIST07"
+    district_county_sub_school_district = "DIST08"
+    district_county_water_district_01 = "DIST11"
+    district_county_mass_transit_authority = "DIST12"
+    district_county_water_district_02 = "DIST13"
+    district_state_board_of_education = "DIST16"
+    district_county_community_college = "DIST18"
+    district_city_council_district = "DIST19"

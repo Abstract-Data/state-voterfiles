@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import Annotated, Optional, Dict, Any, List
+from typing import Annotated, Optional, Dict, Any, List, ClassVar, Set
 from datetime import date
 
 from pydantic import Field as PydanticField
 from pydantic_extra_types.phone_numbers import PhoneNumber as PydanticPhoneNumber
 from pydantic.types import PastDate
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
+from state_voterfiles.utils.pydantic_models.election_details import VotedInElection
+from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 
 
 # TODO: Integrate Strawberry GraphQL types into the models (https://strawberry.rocks/docs/integrations/pydantic)
@@ -20,6 +22,7 @@ class ValidatorBaseModel(ValidatorConfig):
 
 
 class PersonName(ValidatorBaseModel):
+    id: Optional[str] = PydanticField(default=None)
     prefix: Optional[str] = PydanticField(default=None)
     first: str = PydanticField(...)
     last: str = PydanticField(...)
@@ -28,6 +31,16 @@ class PersonName(ValidatorBaseModel):
     dob: Optional[PastDate] = PydanticField(default=None)
     gender: Optional[str] = PydanticField(default=None, max_length=1)
     other_fields: Optional[Dict[str, Any]] = PydanticField(default=None)
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.id = self.generate_hash_key()
+
+    def generate_hash_key(self) -> str:
+        return RecordKeyGenerator.generate_static_key((self.first, self.last, self.dob))
 
 
 class VoterRegistration(ValidatorBaseModel):
@@ -57,6 +70,7 @@ class Address(ValidatorBaseModel):
     """
     This should be used for all addresses, you'll need to pass a dictionary of the address fields to the model, versus all values
     """
+    id: Optional[str] = PydanticField(default=None)
     address_type: Annotated[
         Optional[str],
         PydanticField(default=None)]
@@ -122,8 +136,51 @@ class Address(ValidatorBaseModel):
         PydanticField(default=None)
     ]
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.id = self.generate_hash_key()
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def generate_hash_key(self) -> str:
+        if not self.standardized:
+            raise ValueError("Address must be standardized before generating a hash key.")
+        return RecordKeyGenerator.generate_static_key(self.standardized)
+
+    def update(self, other: Address):
+        if other.address1 and not self.address1:
+            self.address1 = other.address1
+        if other.address2 and not self.address2:
+            self.address2 = other.address2
+        if other.city and not self.city:
+            self.city = other.city
+        if other.state and not self.state:
+            self.state = other.state
+        if other.zipcode and not self.zipcode:
+            self.zipcode = other.zipcode
+        if other.zip5 and not self.zip5:
+            self.zip5 = other.zip5
+        if other.zip4 and not self.zip4:
+            self.zip4 = other.zip4
+        if other.county and not self.county:
+            self.county = other.county
+        if other.country and not self.country:
+            self.country = other.country
+        if other.standardized and not self.standardized:
+            self.standardized = other.standardized
+        if other.address_parts and not self.address_parts:
+            self.address_parts = other.address_parts
+        if other.address_key and not self.address_key:
+            self.address_key = other.address_key
+        if other.is_mailing and not self.is_mailing:
+            self.is_mailing = other.is_mailing
+        if other.other_fields:
+            self.other_fields.update(other.other_fields)
+
 
 class ValidatedPhoneNumber(ValidatorBaseModel):
+    id: Optional[str] = PydanticField(default=None)
     phone_type: Annotated[
         Optional[str],
         PydanticField(default=None)
@@ -148,6 +205,13 @@ class ValidatedPhoneNumber(ValidatorBaseModel):
         Optional[Dict[str, Any]],
         PydanticField(default_factory=dict)
     ]
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.id = self.generate_hash_key()
+
+    def generate_hash_key(self) -> str:
+        return RecordKeyGenerator.generate_static_key(self.phone)
 
 
 class VEPMatch(ValidatorBaseModel):
@@ -194,19 +258,114 @@ class VEPMatch(ValidatorBaseModel):
 
 
 class District(ValidatorBaseModel):
-    type: str = PydanticField(..., description="Type of district (e.g., 'city', 'county', 'court', 'state', 'federal')")
-    name: Optional[str] = PydanticField(default=None, description="Name of the district")
-    number: Optional[str] = PydanticField(default=None, description="Number or ID of the district")
-    attributes: Dict[str, Any] = PydanticField(default_factory=dict, description="Additional attributes specific to the district type")
+    id: Optional[str] = PydanticField(default=None)
+    state_abbv: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="State abbreviation"
+        )
+    ]
+    city: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="City name"
+        )
+    ]
+    county: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="County name"
+        )
+    ]
+    type: Annotated[
+        str,
+        PydanticField(
+            ...,
+            description="Type of district (e.g., 'city', 'county', 'court', 'state', 'federal')"
+        )
+    ]
+    name: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="Name of the district"
+        )
+    ]
+    number: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="Number or ID of the district"
+        )
+    ]
+    attributes: Annotated[
+        Dict[str, Any],
+        PydanticField(
+            default_factory=dict,
+            description="Additional attributes specific to the district type"
+        )
+    ]
+    record_associations: Annotated[
+        Optional[List[RecordDistrict]],
+        PydanticField(
+            default=None
+        )
+    ]
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        _make_key = RecordKeyGenerator.generate_static_key
+        if self.city:
+            self.id = _make_key((self.state_abbv, self.city, self.type, self.name, self.number))
+        elif self.county:
+            self.id = _make_key((self.state_abbv, self.county, self.type, self.name, self.number))
+        else:
+            self.id = _make_key((self.state_abbv, self.type, self.name, self.number))
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def update(self, other: District):
+        if other.city and not self.city:
+            self.city = other.city
+        if other.county and not self.county:
+            self.county = other.county
+        if other.name and not self.name:
+            self.name = other.name
+        if other.number and not self.number:
+            self.number = other.number
+        if other.attributes:
+            self.attributes.update(other.attributes)
 
 
-# class GovernmentDistricts(ValidatorBaseModel):
-#     person_id: Optional[int] = PydanticField(default=None, description="ID of the associated voter")
-#     districts: Dict[str, District] = PydanticField(default_factory=None, description="Dictionary of districts associated with the voter")
-#
+class RecordDistrict(ValidatorBaseModel):
+
+    district_id: Annotated[Optional[str], PydanticField(default=None, description="ID of the district")]
+    district: Annotated[Optional[District], PydanticField(default=None, description="District information")]
+    record_id: Annotated[Optional[int], PydanticField(default=None, description="ID of the record")]
+    record: Annotated[Optional[RecordBaseModel], PydanticField(default=None, description="Record information")]
+
+
+class VendorName(ValidatorBaseModel):
+    id: Optional[str] = PydanticField(default=None)
+    name: Annotated[str, PydanticField(...)]
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.id = self.generate_hash_key()
+
+    def generate_hash_key(self) -> str:
+        return RecordKeyGenerator.generate_static_key(self.name)
+
+    def __hash__(self):
+        return hash(self.id)
+
 
 class VendorTags(ValidatorBaseModel):
-    vendor: str = PydanticField(..., description="Name of the vendor")
+    vendor_id: str = PydanticField(..., description="Name of the vendor")
     tags: Dict[str, Any] = PydanticField(..., description="List of tags associated with the vendor")
 
 
@@ -218,161 +377,6 @@ class InputData(ValidatorBaseModel):
     settings: Annotated[Dict[str, Any], PydanticField(...)]
     date_format: Annotated[str | List[str], PydanticField(...)]
 
-# class CityDistricts(ValidatorConfig):
-#     id: Annotated[Optional[int], PydanticField(default=None)]
-#     name: Annotated[
-#         Optional[str],
-#         PydanticField(default=None)
-#     ]
-#     school_district: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#
-#
-# class CountyDistricts(ValidatorConfig):
-#     id: Annotated[Optional[int], PydanticField(default=None)]
-#     number: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     id: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     township: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     village: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     ward: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     local_school_district: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     library_district: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     career_center: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     education_service_center: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#     exempted_village_school_district: Annotated[
-#         Optional[str],
-#         PydanticField(
-#             default=None
-#         )
-#     ]
-#
-#
-# class CourtDistricts(ValidatorConfig):
-#     id: Annotated[Optional[int], PydanticField(default=None)]
-#     municipal: Annotated[Optional[str], PydanticField(default=None)]
-#     county: Annotated[Optional[str], PydanticField(default=None)]
-#     appellate: Annotated[Optional[str], PydanticField(default=None)]
-#
-#
-# class StateDistricts(ValidatorConfig):
-#     id: Annotated[Optional[int], PydanticField(default=None)]
-#     board_of_education: Annotated[
-#         Optional[int],
-#         PydanticField(
-#             default=None,
-#         )
-#     ]
-#     legislative_lower: Annotated[
-#         Optional[int],
-#         PydanticField(
-#             default=None,
-#         )
-#     ]
-#     legislative_upper: Annotated[
-#         Optional[int],
-#         PydanticField(
-#             default=None,
-#         )
-#     ]
-#
-#
-# class FederalDistricts(ValidatorConfig):
-#     id: Annotated[Optional[int], PydanticField(default=None)]
-#     congressional: Annotated[
-#         Optional[int],
-#         PydanticField(
-#             default=None,
-#         )
-#     ]
-#
-#
-# class Districts(ValidatorConfig):
-#     id: Annotated[Optional[int], PydanticField(default=None)]
-#     court: Annotated[
-#         Optional[CourtDistricts],
-#         PydanticField(
-#             default=None,
-#
-#         )
-#     ]
-#     city: Annotated[
-#         Optional[CityDistricts],
-#         PydanticField(
-#             default=None,
-#
-#         )
-#     ]
-#     county: Annotated[
-#         Optional[CountyDistricts],
-#         PydanticField(
-#             default=None,
-#
-#         )
-#     ]
-#     state: Annotated[
-#         Optional[StateDistricts],
-#         PydanticField(
-#             default=None,
-#
-#         )
-#     ]
-#
-#     federal: Annotated[
-#         Optional[FederalDistricts],
-#         PydanticField(
-#             default=None,
-#
-#         )]
-
 
 class CustomFields(ValidatorConfig):
     fields: Annotated[
@@ -383,29 +387,42 @@ class CustomFields(ValidatorConfig):
     ]
 
 
-class Election(ValidatorBaseModel):
-    election_type: Annotated[str, PydanticField(description="Type of election (e.g., 'general', 'primary')")]
-    year: Annotated[str, PydanticField(description="Year of election", min_length=4, max_length=4)]
-    vote_date: Annotated[Optional[date], PydanticField(default=None, description="Date person voted")]
-    vote_method: Annotated[str, PydanticField(description="Method of voting (e.g., 'mail', 'in-person')")]
-    primary_party: Annotated[Optional[str], PydanticField(default=None, description="Party affiliation for primary elections")]
+# class Election(ValidatorBaseModel):
+#     election_type: Annotated[str, PydanticField(description="Type of election (e.g., 'general', 'primary')")]
+#     year: Annotated[int, PydanticField(..., description="Year of election")]
+#     vote_date: Annotated[Optional[date], PydanticField(default=None, description="Date person voted")]
+#     vote_method: Annotated[
+#         Optional[str], PydanticField(default=None, description="Method of voting (e.g., 'mail', 'in-person')")]
+#     primary_party: Annotated[
+#         Optional[str], PydanticField(default=None, description="Party affiliation for primary elections")]
+#     attributes: Annotated[Dict[str, Any], PydanticField(default_factory=dict,
+#                                                         description="Additional attributes specific to the election type")]
+
+
+class DataSource(ValidatorBaseModel):
+    file: Annotated[str, PydanticField(..., description="Name of the file")]
+    processed_date: Annotated[date, PydanticField(default=date.today(), description="Date the file was processed")]
+
+    def __hash__(self):
+        return hash(self.file)
 
 
 class RecordBaseModel(ValidatorBaseModel):
     name: Annotated[Optional[PersonName], PydanticField(default=None)]
     voter_registration: Annotated[Optional[VoterRegistration], PydanticField(default=None)]
-    # residential_address: Annotated[Optional[Address], PydanticField(default=None)]
-    # mailing_address: Annotated[Optional[Address], PydanticField(default=None)]
     address_list: Annotated[Optional[List[Address]], PydanticField(default_factory=list)]
-    districts: Annotated[Optional[List[District]], PydanticField(default=None)]
+    districts: Annotated[Optional[List[RecordDistrict]], PydanticField(default=None)]
     phone: Annotated[Optional[List[ValidatedPhoneNumber]], PydanticField(default=None)]
     vendors: Annotated[Optional[List[VendorTags]], PydanticField(default=None)]
-    election_history: Annotated[Optional[List[Election]], PydanticField(
-        default=None,
-        description='List of election history records'
-    )
+    election_history: Annotated[
+        Optional[List[VotedInElection]],
+        PydanticField(
+            default=None,
+            description='List of election history records'
+        )
     ]
     unassigned: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
     vep_keys: Annotated[Optional[VEPMatch], PydanticField(default_factory=VEPMatch)]
     corrected_errors: Annotated[Dict[str, Any], PydanticField(default_factory=dict)]
     input_data: Annotated[Optional[InputData], PydanticField(default=None)]
+    data_sources: Annotated[List[DataSource], PydanticField(default=[])]

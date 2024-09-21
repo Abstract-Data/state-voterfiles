@@ -6,9 +6,9 @@ from pathlib import Path
 
 from state_voterfiles.utils.readers.toml_reader import TomlReader
 from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
-from state_voterfiles.utils.abcs.default_validator_abc import RecordValidatorABC
+from state_voterfiles.utils.pydantic_models.field_models import RecordBaseModel
 from state_voterfiles.utils.abcs.file_loader_abc import (
-    FileTypeConfigs,
+    FileTypeConfigsABC,
     FileLoaderABC,
     VOTERFILE_FIELD_FOLDER,
     VOTERFILE_RECORD_FOLDER,
@@ -26,11 +26,11 @@ class StateFolderReader(FolderReaderABC):
     pass
 
 
-class StateVoterFileConfigs(FileTypeConfigs):
+class StateVoterFileConfigs(FileTypeConfigsABC):
     pass
 
 
-class VoterFileRecord(RecordValidatorABC):
+class VoterFileRecord(RecordBaseModel):
     pass
 
 
@@ -71,7 +71,7 @@ class StateVoterFile(FileLoaderABC):
 
     state: str
     data: Any = None
-    _config: StateVoterFileConfigs = partial(
+    _config: partial[StateVoterFileConfigs] = partial(
         StateVoterFileConfigs,
         field_file_lambda=VOTERFILE_FIELD_FOLDER,
         record_folder_lambda=VOTERFILE_RECORD_FOLDER

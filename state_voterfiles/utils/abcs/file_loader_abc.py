@@ -25,21 +25,32 @@ from state_voterfiles.utils.pydantic_models.rename_model import create_renamed_m
 TEMP_DATA = TomlReader(file=Path(__file__).parents[2] / "folder_paths.toml")
 
 USE_VEP_FILES = False
-DATA_FOLDER = Path("/Users/johneakin/PyCharmProjects/vep-2024/data/voterfiles")
+PACKAGE_DATA_FOLDER = Path(__file__).parents[3] / "data"
+
+DATA_FOLDER = Path("/Users/johneakin/PyCharmProjects/vep-2024/data/voterfiles") if USE_VEP_FILES else PACKAGE_DATA_FOLDER
 
 FIELD_FOLDER = Path(__file__).parents[2] / "field_references" / "states"
 
 
-def VOTERFILE_FIELD_FOLDER(state: str, county: str = None) -> Path:
+def VOTERFILE_FIELD_FOLDER(state: str, county: str = None, city: str = None) -> Path:
     folder = FIELD_FOLDER / (_state := str(state).lower())
-    if not county:
-        return folder / f"{_state}-fields.toml"
+    if county:
+        return folder / f"{_state}-county-{county.lower()}.toml"
+    elif city:
+        return folder / f"{_state}-city-{city.lower()}.toml"
     else:
-        return folder / f"{_state}-{county.lower()}.toml"
+        return folder / f"{_state}-fields.toml"
 
 
-def VOTERFILE_RECORD_FOLDER(state: str) -> Path:
-    return DATA_FOLDER / str(state).lower()
+def VOTERFILE_RECORD_FOLDER(state: str, county: str = None, city: str = None) -> Path:
+    data_folder = DATA_FOLDER / str(state).lower()
+    if city:
+        data_folder = data_folder / f"{state.lower()}-city-{city.lower()}"
+    elif county:
+        data_folder = data_folder / f"{state.lower()}-county-{county.lower()}"
+    else:
+        data_folder
+    return data_folder
 
 
 def logfire_wrapper(func):
@@ -90,11 +101,31 @@ def read_one_file_func(folder: Path, **kwargs) -> Generator[Dict, None, None]:
         yield record
 
 
-class FileTypeConfigs(BaseModel, abc.ABC):
-    state: Annotated[str, PydanticField(description="The state for which the file is being processed.")]
+class FileTypeConfigsABC(BaseModel, abc.ABC):
+    state: Annotated[
+        str,
+        PydanticField(
+            description="The state for which the file is being processed."
+        )
+    ]
+    county_: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="The county for which the file is being processed."
+        )
+    ]
+    city_: Annotated[
+        Optional[str],
+        PydanticField(
+            default=None,
+            description="The city for which the file is being processed."
+        )
+    ]
     field_file_lambda: Callable[[str], Path]
     record_folder_lambda: Callable[[str], Path]
     _field_file_path: Annotated[Path, PydanticField(default=None)]
+    _record_file_path: Annotated[Path, PydanticField(default=None)]
     _fields: Annotated[Optional[TomlReader], PydanticField(default=None)]
     _headers: Annotated[Optional[list], PydanticField(default=None)]
     _folder: Annotated[Optional[FolderReaderABC], PydanticField(default=None)]
@@ -102,9 +133,21 @@ class FileTypeConfigs(BaseModel, abc.ABC):
 
     @property
     def field_file_path(self):
-        self._field_file_path = self.field_file_lambda(self.state)
+        self._field_file_path = self.field_file_lambda(
+            state=self.state,
+            county=self.county_.lower() if self.county_ else None,
+            city=self.city_.lower() if self.city_ else None
+        )
         return self._field_file_path
 
+    @property
+    def record_file_path(self):
+        self._record_file_path = self.record_folder_lambda(
+            state=self.state,
+            county=self.county_.lower() if self.county_ else None,
+            city=self.city_.lower() if self.city_ else None
+        )
+        return self._record_file_path
     @property
     def fields(self):
         self._fields = TomlReader(
@@ -125,10 +168,10 @@ class FileTypeConfigs(BaseModel, abc.ABC):
 
     @property
     def folder(self):
-        _record_folder = self.record_folder_lambda(self.state)
+        _record_folder = self.record_file_path
         self._folder = FolderReaderABC(
             state=self.state,
-            file_type="targets" if "targets" in str(_record_folder) else "voterfiles",
+            file_type="voterfiles",
             folder_path=_record_folder
         ).read()
         return self._folder
@@ -179,7 +222,9 @@ class FileLoaderABC(abc.ABC):
     """
 
     state: str
-    _config: partial[FileTypeConfigs] = None
+    county: Optional[str] = field(default=None)
+    city: Optional[str] = field(default=None)
+    _config: partial[FileTypeConfigsABC] = None
     data: Any = None
     fields: TomlReader = None
     context_managers: list = field(default_factory=list)
@@ -219,9 +264,14 @@ class FileLoaderABC(abc.ABC):
                 stack.enter_context(cm)
             yield stack
 
+    @abc.abstractmethod
     @cached_property
     def config(self):
-        return self._config(state=self.state)
+        return self._config(
+            state=self.state,
+            county_=self.county,
+            city_=self.city
+        )
 
     @cached_property
     def logger(self):

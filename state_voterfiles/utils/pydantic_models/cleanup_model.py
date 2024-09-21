@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple, Optional, Annotated, Self
+from typing import Any, Dict, List, Tuple, Optional, Annotated, Self, Set, Iterable, Type, Generator, Union
 from datetime import datetime, date
 from functools import partial
 from enum import StrEnum
+import uuid
+from collections import defaultdict
+
 import usaddress
 import phonenumbers
 # import logfire
@@ -11,25 +14,41 @@ from rapidfuzz import fuzz
 
 from pydantic import Field, model_validator
 from pydantic_core import PydanticCustomError
+from pydantic import ValidationError, BaseModel, Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
+
 from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 import state_voterfiles.utils.validation.default_helpers as helpers
 import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.validation.election_history import StateElectionHistoryValidator
+from state_voterfiles.utils.validation.texas_elections import TexasElectionHistoryValidator
 from state_voterfiles.utils.pydantic_models.field_models import (
+    ValidatorConfig,
     ValidatedPhoneNumber,
     Address,
     PersonName,
     VoterRegistration,
     VEPMatch,
     District,
+    RecordDistrict,
     CustomFields,
+    VendorName,
     VendorTags,
     InputData,
-    RecordBaseModel
+    RecordBaseModel,
+    DataSource
 )
-
+from state_voterfiles.utils.pydantic_models.election_details import (
+    VotedInElection,
+    ElectionTypeDetails,
+    ElectionList
+)
+from state_voterfiles.utils.helpers.district_codes import DistrictCodes
+from state_voterfiles.utils.funcs.validation.address import AddressType, AddressValidationFuncs, AddressTypeList
+from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationFuncs
+from state_voterfiles.utils.funcs.validation.vep_keys import VEPKeyMaker
+from state_voterfiles.utils.funcs.validation.dates import DateValidators
+from state_voterfiles.utils.funcs.validation.election_history import ElectionValidationFuncs
 ic.enable()
 ic.configureOutput(prefix='PreValidationCleanUp| ', includeContext=True)
 
@@ -40,757 +59,10 @@ ic.configureOutput(prefix='PreValidationCleanUp| ', includeContext=True)
 
 RAISE_EXCEPTIONS_FOR_CHANGES = False
 
-AddressCorrections = Dict[str, List[str]]
-
-NEEDED_ADDRESS_PARTS = ['address1', 'address1', 'city', 'state', 'zip5', 'zip4']
-
-OUTPUT_ADDRESS_DICT_KEYS = ['address_parts', 'zipcode', 'county', 'standardized', 'key'] + NEEDED_ADDRESS_PARTS
-
-
-class AddressType(StrEnum):
-    RESIDENCE = 'residence'
-    MAIL = 'mail'
-
-
-AddressTypeList = [AddressType.MAIL, AddressType.RESIDENCE]
-
-
-@pydantic_dataclass
-class AddressValidationFuncs:
-    @staticmethod
-    def get_existing_parts(
-            address_type_: str,
-            renamed_: RecordRenamer,
-            address_corrections_: List[str]) -> [helpers.AddressLinesOrdered,
-                                                 helpers.AddressLinesDict,
-                                                 AddressCorrections]:
-        _part_field_prefix = f'{address_type_}_part'
-        _existing_parts = vfuncs.getattr_with_prefix(pfx=_part_field_prefix, obj=renamed_)
-
-        if not _existing_parts:
-            return {}, {}, address_corrections_
-
-        with_suffix = partial(vfuncs.next_with_key_suffix, dict_=_existing_parts)
-        address1_parts = [with_suffix(x) for x in helpers.ADDRESS1_PREFIXES if with_suffix(x)]
-        address2_parts = [with_suffix(x) for x in helpers.ADDRESS2_PREFIXES if with_suffix(x)]
-        _existing_parts[f'{address_type_}_address1'] = " ".join(address1_parts) if address1_parts else None
-        _existing_parts[f'{address_type_}_address2'] = " ".join(address2_parts) if address2_parts else None
-        if any(_existing_parts.values()):
-            existing_parts_address_lines = helpers.AddressLinesOrdered(
-                address1=_existing_parts.get(f'{address_type_}_address1'),
-                address2=_existing_parts.get(f'{address_type_}_address2'),
-                city=_existing_parts.get(f'{_part_field_prefix}_city'),
-                state=_existing_parts.get(f'{_part_field_prefix}_state'),
-                zip5=_existing_parts.get(f'{_part_field_prefix}_zip5'),
-                zip4=_existing_parts.get(f'{_part_field_prefix}_zip4')
-            )
-            if any(dict(existing_parts_address_lines).values()):
-                if not existing_parts_address_lines.state and address_type_ == AddressType.RESIDENCE:
-                    existing_parts_address_lines.state = renamed_.settings.get('STATE').get('abbreviation')
-                    existing_parts_address_lines.model_validate(existing_parts_address_lines)
-
-            if existing_parts_address_lines.standardized:
-                existing_parts_parsed = {
-                    value_: type_ for value_, type_ in usaddress.parse(
-                        " ".join(
-                            [
-                                x for x in dict(existing_parts_address_lines).values() if x
-                            ]
-                        )
-                    )
-                }
-                needed_parts = NEEDED_ADDRESS_PARTS.copy()
-                address_lines_dict = {}
-                if existing_parts_parsed:
-                    for k, v in existing_parts_parsed.items():
-                        for part in needed_parts:
-                            field_dict = getattr(helpers.ADDRESS_PARSER_FIELDS, part.upper(), None)
-                            if field_dict and v in field_dict:
-                                address_lines_dict.setdefault(part, []).append(k)
-                                address_corrections_.append(f"Added parsed fields to {part}")
-
-                    # existing_not_parts_into_lines = helpers.AddressLinesOrdered(
-                    #     **{
-                    #         k: " ".join(list(v)) for k, v in address_lines_dict.items()
-                    #     }
-                    # )
-                    return existing_parts_address_lines, existing_parts_parsed, address_corrections_
-            return {}, {}, address_corrections_
-
-    @staticmethod
-    def get_existing_not_parts(renamed_: RecordRenamer, address_type_: str,
-                               address_corrections_: List[str]) -> [helpers.AddressLinesOrdered,
-                                                                    helpers.AddressLinesDict,
-                                                                    AddressCorrections]:
-        """ Get the existing full address lines of the address that are not address parts. """
-        needed_parts = NEEDED_ADDRESS_PARTS.copy()
-
-        _existing_not_parts = {k: getattr(renamed_, f'{address_type_}_{k}', None) for k in needed_parts}
-        if not _existing_not_parts:
-            return {}, {}, address_corrections_
-
-        existing_address = helpers.AddressLinesOrdered(**_existing_not_parts)
-        if existing_address.standardized:
-            existing_address_parsed = {
-                value_: type_ for value_, type_ in usaddress.parse(
-                    existing_address.standardized if existing_address.standardized else ' '.join(
-                        list(dict(existing_address).values())))
-            }
-
-            parse_new_parts_dict = {}
-            if existing_address_parsed:
-                for value_, type_ in existing_address_parsed.items():
-                    parse_new_parts_dict.setdefault(type_, []).append(value_)
-                # new_address_lines = {}
-                address_lines_dict = {}
-                needed_parts.append('usps')
-                for k, v in existing_address_parsed.items():
-                    if v:
-                        if address_lines_dict.get(v):
-                            address_lines_dict[v] += f" {k}"
-                        else:
-                            address_lines_dict[v] = k
-
-                for k, v in existing_address_parsed.items():
-                    for part in needed_parts:
-                        field_dict = getattr(helpers.ADDRESS_PARSER_FIELDS, part.upper(), None)
-                        if field_dict and v in field_dict:
-                            # Check if the value is already in the list before appending
-                            if k not in address_lines_dict.setdefault(part, []):
-                                address_lines_dict[part].append(k)
-                                address_corrections_.append(f"Added parsed fields to {part}")
-                    existing_individual_parts = helpers.AddressPartsDict(**parse_new_parts_dict)
-                    return existing_address, existing_individual_parts, address_corrections_
-        return {}, {}, address_corrections_
-
-    @staticmethod
-    def validate_address(address_type, _renamed: RecordRenamer) -> [Dict[str, Any], Dict[str, Any]]:
-        if not _renamed:
-            return None, None
-
-        match address_type:
-            case 'mail' | 'mailing':
-                _address_type = AddressType.MAIL
-            case 'residential' | 'residence':
-                _address_type = AddressType.RESIDENCE
-            case _:
-                raise ValueError(f"Invalid address type: {address_type}")
-        corrections = []
-
-        existing_parts_lines, existing_parts_parsed, corrections = AddressValidationFuncs.get_existing_parts(
-            address_type_=address_type,
-            renamed_=_renamed,
-            address_corrections_=corrections
-        )
-        existing_address_lines, existing_address_parsed, corrections = AddressValidationFuncs.get_existing_not_parts(
-            renamed_=_renamed,
-            address_type_=address_type,
-            address_corrections_=corrections
-        )
-        if all([existing_address_lines, existing_parts_lines]):
-            check_dict = dict(existing_address_lines)
-
-            for k, v in dict(existing_address_lines).items():
-                if not v and (part := getattr(existing_parts_lines, k, None)):
-                    check_dict[k] = part
-                    corrections.append(f"Added {k} from parts to address")
-        else:
-            check_dict = next((x for x in [existing_address_lines, existing_parts_lines] if x), None)
-
-        if check_dict:
-            address_parts = vfuncs.safe_dict_merge(dict(existing_address_parsed), dict(existing_parts_parsed))
-            new_check_dict = helpers.AddressLinesOrdered(**dict(check_dict))
-            if not new_check_dict.state and address_type == AddressType.RESIDENCE:
-                new_check_dict.state = _renamed.settings.get('STATE').get('abbreviation')
-                new_check_dict.model_validate(new_check_dict)
-            std_address = new_check_dict.standardized
-            corrections.append("Standardized address based on address1, city, state, and zipcode")
-
-            address_dict_to_return = {
-                f'{address_type}_{part}': getattr(new_check_dict, part, None) for part in NEEDED_ADDRESS_PARTS
-            }
-
-            address_dict_to_return.update({
-                f'{address_type}_standardized': std_address,
-                f'{address_type}_key': RecordKeyGenerator(std_address).hash if std_address else None,
-                f'{address_type}_address_parts': address_parts,
-                f'{address_type}_is_mailing': True if address_type == AddressType.MAIL else None
-            })
-            if not address_dict_to_return.get(f'{address_type}_zip5'):
-                corrections.append("Zip5 was missing, cannot correctly standardize address.")
-                address_dict_to_return.pop(f'{address_type}_standardized', None)
-                if address_dict_to_return.pop(f'{address_type}_zip4', None):
-                    corrections.append("Zip4 was removed because Zip5 was missing.")
-                raise PydanticCustomError(
-                    'cannot_standardize',
-                    'Zip5 is missing. Cannot standardize address.',
-                    dict(
-                        model='PreValidationCleanUp',
-                        function=f'validate_{address_type}_address',
-                        nested_function='validate_address'
-                    )
-                )
-            if (address_dict_to_return.get(f'{address_type}_zip4') and
-                    len(address_dict_to_return.get(f'{address_type}_zip4')) != 4):
-                corrections.append("Zip4 was too short. Removed Zip4")
-                address_dict_to_return[f'{address_type}_zip4'] = None
-
-            _return_address_corrections = {address_type: list(set(corrections))}
-            return address_dict_to_return, _return_address_corrections
-
-    @staticmethod
-    def copy_address(src, dest):
-        """Copy address details from src to dest."""
-        dest.standardized = src.standardized
-        dest.address1 = src.address1
-        dest.address2 = src.address2
-        dest.city = src.city
-        dest.state = src.state
-        dest.zip5 = src.zip5
-        dest.zip4 = src.zip4
-        dest.zipcode = src.zipcode
-        dest.address_parts = src.address_parts | dest.address_parts
-
-    @staticmethod
-    def process_addresses(self):
-        _residence = next((x for x in self.address_list if x.address_type == AddressType.RESIDENCE), None)
-        _mail = next((x for x in self.address_list if x.address_type == AddressType.MAIL), None)
-        if _residence and _mail:
-            if _residence.standardized != _mail.standardized:
-                score = fuzz.token_sort_ratio(_residence.standardized, _mail.standardized)
-                if score > 93:
-                    if len(_residence.standardized) > len(_mail.standardized):
-                        AddressValidationFuncs.copy_address(_residence, _mail)
-                    else:
-                        AddressValidationFuncs.copy_address(_mail, _residence)
-                elif score > 85 > 93:
-                    raise PydanticCustomError(
-                        'standardized:address_mismatch',
-                        'Residential and Mailing addresses are close to matching, requires manual review.',
-                        {
-                            'function': 'process_addresses',
-                            'addresses': {
-                                'residential': _residence.standardized,
-                                'mailing': _mail.standardized
-                            },
-                        }
-                    )
-            return self
-
-
-@pydantic_dataclass
-class PhoneNumberValidationFuncs:
-
-    @staticmethod
-    def check_if_valid_phone(phone_num: str) -> Tuple[phonenumbers.PhoneNumber | None, List[str]]:
-        number_corrections = []
-        _correct_number = None
-        try:
-            _correct_number = phonenumbers.parse(phone_num, "US")
-        except phonenumbers.phonenumberutil.NumberParseException:
-            number_corrections.append('Phone number is not a valid US phone number')
-            _correct_number = None
-        if _correct_number and not phonenumbers.is_valid_number(_correct_number):
-            number_corrections.append('Phone number is not a valid US phone number')
-            _correct_number = None
-        if not _correct_number:
-            number_corrections.append('Phone number is not a valid US phone number')
-        return _correct_number, number_corrections
-
-    @staticmethod
-    def validate_phone_number(phone: str) -> Tuple[Optional[phonenumbers.PhoneNumber], List[str]]:
-        try:
-            parsed_number = phonenumbers.parse(phone, "US")
-            if phonenumbers.is_valid_number(parsed_number):
-                return parsed_number, ["Phone number successfully validated"]
-            else:
-                return None, ["Phone number is not a valid US phone number"]
-        except phonenumbers.NumberParseException:
-            return None, ["Failed to parse phone number"]
-
-    @staticmethod
-    def format_phone_number(phone: phonenumbers.PhoneNumber) -> Dict[str, str]:
-        formatted = phonenumbers.format_number(phone, phonenumbers.PhoneNumberFormat.E164)
-        national_number = str(phone.national_number)
-        return {
-            "phone": formatted,
-            "areacode": national_number[:3],
-            "number": national_number[3:]
-        }
-
-    @staticmethod
-    def validate_phones(self):
-        _func = PhoneNumberValidationFuncs
-        phone_list = []
-        all_corrections = {}
-        input_phone_dict = vfuncs.getattr_with_prefix(helpers.CONTACT_PHONE_PREFIX, getattr(self, 'data', None))
-
-        if not input_phone_dict:
-            self.phone = None
-            return self
-
-        for key, value in input_phone_dict.items():
-            if not key.startswith(helpers.CONTACT_PHONE_PREFIX) or not value:
-                continue
-
-            phone_type = key.split('_')[2]
-            type_prefix = f'{helpers.CONTACT_PHONE_PREFIX}_{phone_type}'
-
-            full_phone = input_phone_dict.get(type_prefix)
-            phone_areacode = input_phone_dict.get(f'{type_prefix}_areacode')
-            phone_number = input_phone_dict.get(f'{type_prefix}_number')
-
-            corrections = []
-
-            if full_phone:
-                parsed_phone, parse_corrections = _func.validate_phone_number(full_phone)
-                corrections.extend(parse_corrections)
-
-                if parsed_phone:
-                    phone_data = _func.format_phone_number(parsed_phone)
-                    phone_data['phone_type'] = phone_type
-                    phone_data['reliability'] = input_phone_dict.get(f'{type_prefix}_reliability')
-                    phone_list.append(ValidatedPhoneNumber(**phone_data))
-                    corrections.append(f'{phone_type} was successfully validated and formatted')
-
-            if phone_areacode and phone_number:
-                if len(phone_areacode) == 3 and len(phone_number) == 7:
-                    merged_number = f"{phone_areacode}{phone_number}"
-                    parsed_merged, merge_corrections = _func.validate_phone_number(merged_number)
-                    corrections.extend(merge_corrections)
-
-                    if parsed_merged:
-                        formatted_merged = _func.format_phone_number(parsed_merged)
-                        formatted_merged['phone_type'] = phone_type
-                        formatted_merged['reliability'] = input_phone_dict.get(f'{type_prefix}_reliability')
-
-                        if not any(p.phone == formatted_merged['phone'] for p in phone_list):
-                            phone_list.append(ValidatedPhoneNumber(**formatted_merged))
-                            corrections.append(f'Additional number added for {phone_type}')
-
-            if corrections:
-                all_corrections[phone_type] = corrections
-
-        if phone_list:
-            self.corrected_errors.update({f'phone_{k}': v for k, v in all_corrections.items()})
-            self.phone = phone_list
-        else:
-            self.phone = None
-
-        return self
-
-
-def validate_date_dob(self):
-    _date_format = self.date_format
-
-    if not _date_format:
-        raise PydanticCustomError(
-            'missing_date_format',
-            'Date format is missing for voter registration date',
-            dict(
-                model='PreValidationCleanUp',
-                function='validate_dob',
-                nested_function='validate_date_dob'
-            )
-        )
-    _dob = None
-    valid_dob = None
-    dob_corrections = []
-    if not self.data.person_dob:
-        if self.data.person_dob_yearmonth:
-            if self.data.person_dob_day:
-                _dob = f"{self.data.person_dob_yearmonth}{self.data.person_dob_day}"
-            else:
-                _dob = self.data.person_dob = f"{self.data.person_dob_yearmonth}01"
-                dob_corrections.append('Combined yearmonth and day values to create a valid date')
-        elif self.data.person_dob_year:
-            if self.data.person_dob_month and self.data.person_dob_day:
-                _dob = f"{self.data.person_dob_year}{self.data.person_dob_month}{self.data.person_dob_day}"
-                dob_corrections.append('Combined year, month, and day values to create a valid date')
-            elif self.data.person_dob_month:
-                _dob = f"{self.data.person_dob_year}{self.data.person_dob_month}01"
-                dob_corrections.append('Combined year and month values to create a valid date')
-            else:
-                _dob = f"{self.data.person_dob_year}0101"
-                dob_corrections.append('Combined year and month values to create a valid date')
-        else:
-            _dob = None
-
-    if self.data.person_dob:
-        if isinstance(self.data.person_dob, date):
-            valid_dob = self.data.person_dob
-        elif isinstance(self.data.person_dob, str):
-            _dob = str(self.data.person_dob).replace('-', '')
-            if len(_dob) == 6 and '%Y%m%d' in _date_format:
-                dob_corrections.append(
-                    "DOB only has 6 characters. Attempting to validate by adding 01 for the day.")
-                _dob = f"{_dob}01"
-        else:
-            _dob = None
-            dob_corrections.append('DOB is not a valid date. Removed DOB.')
-
-    if _dob:
-
-        if _dob[-2:] == '00':
-            _dob = _dob[:-2] + '01'
-        if isinstance(_date_format, list):
-            for _time_format in _date_format:
-                try:
-                    valid_dob = datetime.strptime(_dob, _time_format).date()
-                except ValueError:
-                    continue
-                else:
-                    break
-        elif isinstance(_date_format, str):
-            valid_dob = datetime.strptime(_dob, _date_format).date()
-        else:
-            valid_dob = None
-        self.person_details['person_dob'] = valid_dob
-        dob_corrections.append('Converted values to a valid date')
-        self.corrected_errors.update({'dob': dob_corrections})
-    return self
-
-
-def validate_date_edr(self):
-    _date_format = self.date_format
-    _voter_registration = self.data.voter_registration_date
-    _voter_registration_corrections = []
-
-    if not _voter_registration:
-        return self
-
-    if not _date_format:
-        raise PydanticCustomError(
-            'missing_date_format',
-            'Date format is missing for voter registration date',
-            dict(
-                model='PreValidationCleanUp',
-                function='validate_edr',
-                nested_function='validate_date_edr'
-            )
-        )
-
-    # _possible_keys = key_list_with_suffix('registration_date', _voter_registration)
-    # if _possible_keys and len(_possible_keys) == 1:
-    #     if _date_format:
-    if isinstance(_date_format, list):
-        for _time_format in _date_format:
-            try:
-                self.input_voter_registration['edr'] = (
-                    datetime.strptime(
-                        _voter_registration, _time_format
-                    ).date()
-                )
-            except ValueError:
-                continue
-            else:
-                break
-    elif isinstance(_date_format, str):
-        try:
-            self.input_voter_registration['edr'] = (
-                datetime.strptime(
-                    _voter_registration, _date_format
-                ).date()
-            )
-            _voter_registration_corrections.append('Converted registration to a valid date')
-        except ValueError:
-            raise PydanticCustomError(
-                'invalid_registration_date',
-                'Invalid voter registration date for record: {voter_registration_date}',
-                dict(
-                    model='PreValidationCleanUp',
-                    function='validate_edr',
-                    nested_function='validate_date_edr',
-                    voter_registration_date=_voter_registration)
-            )
-        self.corrected_errors.update({'voter_registration': _voter_registration_corrections})
-        if not self.input_voter_registration['edr'] and self.data.settings.get('FILE-TYPE') == 'voterfile':
-            raise PydanticCustomError(
-                'invalid_registration_date',
-                'Invalid voter registration date for record: {voter_registration_date}',
-                dict(
-                    model='PreValidationCleanUp',
-                    function='validate_edr',
-                    nested_function='validate_date_edr',
-                    voter_registration_date=_voter_registration)
-            )
-    return self
-
-
-# def validate_phones(self: PreValidationCleanUp) -> PreValidationCleanUp:
-#     _formatter = phonenumbers.format_number
-#     _input_phone_dict = vfuncs.getattr_with_prefix(helpers.CONTACT_PHONE_PREFIX, self.data)
-#     if not _input_phone_dict:
-#         return self
-#
-#     phone_dict = {}
-#     _phone_types = [k.split('_')[2] for k, v in _input_phone_dict.items() if
-#                     k.startswith(helpers.CONTACT_PHONE_PREFIX) and v]
-#     _all_phone_corrections = {}
-#
-#     for each in _phone_types:
-#         _type_pfx = f'{helpers.CONTACT_PHONE_PREFIX}_{each}'
-#         _formatted_full_phone = None
-#         _formatted_number_parts = None
-#         _full_phone = None
-#         _number_parts = None
-#         _existing_full_phone = _input_phone_dict.get(_type_pfx)
-#         _existing_phone_areacode = _input_phone_dict.get(f'{_type_pfx}_areacode')
-#         _existing_phone_number = _input_phone_dict.get(f'{_type_pfx}_number')
-#         type_corrections = {}
-#         type_corrections.setdefault(f'{each}', [])
-#         if _existing_full_phone:
-#             _full_phone, _full_phone_corrections = check_if_valid_phone(_existing_full_phone)
-#             if _full_phone:
-#                 _formatted_full_phone = _formatter(_full_phone, phonenumbers.PhoneNumberFormat.E164)
-#
-#             type_corrections[each].append(_full_phone_corrections)
-#
-#         if all([_existing_phone_areacode, _existing_phone_number]):
-#             if all([len(_existing_phone_areacode) == 3, len(_existing_phone_number) == 7]):
-#                 merged_number = f"{_existing_phone_areacode}{_existing_phone_number}"
-#                 _number_parts, _number_parts_corrections = check_if_valid_phone(merged_number)
-#                 if _number_parts:
-#                     _formatted_number_parts = _formatter(_number_parts, phonenumbers.PhoneNumberFormat.E164)
-#                 type_corrections[each].append(_number_parts_corrections)
-#             else:
-#                 raise PydanticCustomError(
-#                     f'invalid_{_type_pfx}_format',
-#                     f'Invalid {_type_pfx} format.',
-#                     dict(
-#                         model='PreValidationCleanUp',
-#                         function='validate_phones',
-#                         nested_function='validate_phones',
-#                         areacode=f'{_existing_phone_areacode} ({len(_existing_phone_areacode)})',
-#                         number=f'{_existing_phone_number} ({len(_existing_phone_number)})'
-#                     )
-#                 )
-#
-#         if _formatted_full_phone and _formatted_number_parts:
-#             if _formatted_full_phone != _formatted_number_parts:
-#
-#                 phone_dict[each] = {
-#                     'phone_type': each,
-#                     'phone': _formatted_full_phone,
-#                     'areacode': str(_full_phone.national_number)[:3],
-#                     'number': str(_full_phone.national_number)[3:]
-#                 }
-#                 type_corrections[each].append(f'{each} was successfully validated and formatted')
-#
-#                 _type_of_phone = each[:-1]
-#                 _type_of_phone_count = int(each[-1:]) + 1
-#
-#                 mismatch_type = f'{_type_of_phone}{_type_of_phone_count}'
-#                 while mismatch_type in _phone_types:
-#                     _type_of_phone_count += 1
-#                     mismatch_type = f'{_type_of_phone}{_type_of_phone_count}'
-#
-#                 phone_dict[mismatch_type] = {
-#                     'phone_type': mismatch_type,
-#                     'phone': _formatted_number_parts,
-#                     'areacode': str(_number_parts.national_number)[:3],
-#                     'number': str(_number_parts.national_number)[3:]
-#                 }
-#                 type_corrections[each].append(
-#                     f'Full {each} number did not match areacode and number parsed out for the same field. Additional number was set to {mismatch_type}')
-#                 type_corrections[each].append(
-#                     f'{mismatch_type} was successfully validated and formatted')
-#
-#             else:
-#                 type_corrections[each].append(f'{each} was successfully validated and formatted')
-#                 phone_dict[each] = {
-#                     'phone_type': each,
-#                     'phone': _formatted_full_phone,
-#                     'areacode': str(_full_phone.national_number)[:3],
-#                     'number': str(_full_phone.national_number)[3:]
-#                 }
-#
-#         elif _formatted_full_phone:
-#             type_corrections[each].append(f'{each} was successfully validated and formatted')
-#             phone_dict[each] = {
-#                 'phone_type': each,
-#                 'phone': _formatted_full_phone,
-#                 'areacode': str(_full_phone.national_number)[:3],
-#                 'number': str(_full_phone.national_number)[3:],
-#                 'reliability': _input_phone_dict.get(f'{_type_pfx}_reliability', None)
-#             }
-#         elif _formatted_number_parts:
-#             type_corrections[each].append(f'{each} was successfully validated and formatted')
-#             phone_dict[each] = {
-#                 'phone_type': each,
-#                 'phone': _formatted_number_parts,
-#                 'areacode': str(_number_parts.national_number)[:3],
-#                 'number': str(_number_parts.national_number)[3:],
-#                 'reliability': _input_phone_dict.get(f'{_type_pfx}_reliability', None)
-#             }
-#         else:
-#             _ = None
-#
-#         if type_corrections:
-#             _all_phone_corrections.update(type_corrections)
-#
-#     if any(phone_dict.values()):
-#         self.corrected_errors.update({f'phone_{k}': v for k, v in _all_phone_corrections.items()})
-#         ic('Phone Dict', phone_dict)
-#         self.phone = list(ValidatedPhoneNumber(**x) for x in phone_dict.values())
-#         ic('Validated Phones', self.phone)
-#     else:
-#         self.phone = None
-#     return self
-
-
-# def validate_vendors(self):
-#     new_vendor_dict = None
-#     _input_vendor_dict = vfuncs.getattr_with_prefix('vendor', self.data)
-#     vendor_corrections = {}
-#     if isinstance(_input_vendor_dict, dict):
-#         new_vendor_dict = {}
-#         vendor_names = [k.split('_')[1] for k, v in _input_vendor_dict.items()]
-#         for vendor in vendor_names:
-#             vendor_title = f'vendor_{vendor}'
-#             vendor_corrections[vendor_title] = ['Parsed vendor name']
-#             vendor_dict = vfuncs.dict_with_prefix(pfx=vendor_title, dict_=_input_vendor_dict)
-#
-#             # Replace vendor title in key via map within vendor dict
-#             updated_vendor_dict = {}
-#             for k, v in vendor_dict.items():
-#                 k_ = k.replace(f'{vendor_title}_', '')
-#                 vendor_corrections[vendor_title].append(f'Parsed {k_}')
-#                 if k_ == 'id':
-#                     k_ = k_ + '_'
-#                     vendor_corrections[vendor_title].append(f'Transformed {k_} to be nested under {vendor}')
-#                 updated_vendor_dict.update({k_: v})
-#             # vendor_dict = {k.replace(f'{vendor_title}_', ''): v for k, v in vendor_dict.items()}
-#             new_vendor_dict[vendor] = updated_vendor_dict
-#     if new_vendor_dict:
-#         self.vendors = new_vendor_dict
-#         self.vendor_corrections = vendor_corrections
-#     return self
-
-
-def create_vep_keys(self):
-    if not self.name:
-        raise PydanticCustomError(
-            'missing_name',
-            'Missing name details. Unable to generate a strong key to match with',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'create_vep_keys'
-            }
-        )
-    elif not all([first_ := self.name.first, last_ := self.name.last]):
-        if not first_:
-            missing_name = 'first'
-        elif not last_:
-            missing_name = 'last'
-        else:
-            missing_name = 'first and last'
-
-        raise PydanticCustomError(
-            f'missing_{missing_name.replace(' ', '_')}_name',
-            f'Missing {missing_name} name. Unable to generate a strong key to match with',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'create_vep_keys'
-            }
-        )
-
-    if not self.name.dob:
-        if RAISE_EXCEPTIONS_FOR_CHANGES:
-            raise PydanticCustomError(
-                'missing_dob',
-                'Missing date of birth. Unable to generate a strong key to match with',
-                {
-                    'validator_model': self.__class__.__name__,
-                    'method_type': 'model_validator',
-                    'method_name': 'create_vep_keys'
-                }
-            )
-        else:
-            _dob = None
-    else:
-        _dob = str(self.name.dob).replace('-', '')
-
-    if not any([x for x in self.address_list if x.address_type in AddressTypeList]):
-        return self
-
-    if addr := next((x for x in self.address_list if x.address_type == AddressType.RESIDENCE), None):
-        _zip5, _zip4, _standardized_address = addr.zip5, addr.zip4, addr.standardized
-        _uses_mailzip = None
-    elif addr := next((x for x in self.address_list if x.address_type == AddressType.MAIL), None):
-        _zip5, _zip4, _standardized_address = addr.zip5, addr.zip4, addr.standardized
-        _uses_mailzip = True
-    else:
-        _zip5, _zip4, _standardized_address = None, None, None
-        _uses_mailzip = None
-
-    name_ = self.name
-    _first_name, _last_name, _dob = name_.first, name_.last, name_.dob
-
-    vep_key_dict = {}
-
-    _initial_name_key = f"{_first_name[:5].strip()}{_last_name[:5].strip()}"
-    if _zip5:
-        _vep_key = f"{_initial_name_key}{_zip5.strip()}"
-        vep_key_dict['short'] = vfuncs.only_text_and_numbers(_vep_key)
-        # if _zip4:
-        #     _vep_key += f"{_zip4}"
-        vep_key_dict['best_key'] = vfuncs.only_text_and_numbers(_vep_key)
-        vep_key_dict['full_key'] = vfuncs.only_text_and_numbers(_vep_key)
-        vep_key_dict['full_key_hash'] = RecordKeyGenerator(_vep_key).hash
-        if _dob:
-            _vep_key += f"{_dob}"
-            _cleaned_vep_key = vfuncs.only_text_and_numbers(_vep_key)
-            vep_key_dict['best_key'] = _cleaned_vep_key
-            vep_key_dict['long'] = _cleaned_vep_key
-            vep_key_dict['full_key'] = _cleaned_vep_key
-            vep_key_dict['full_key_hash'] = RecordKeyGenerator(_cleaned_vep_key).hash
-
-    if _dob:
-        _name_key = f"{_initial_name_key}{_dob}"
-        _cleaned_name_key = vfuncs.only_text_and_numbers(_name_key)
-        vep_key_dict['name_dob'] = _cleaned_name_key
-        if not vep_key_dict.get('best_key'):
-            vep_key_dict['best_key'] = _cleaned_name_key
-
-    if _standardized_address:
-        _address_key = _standardized_address.replace(' ', '').replace(',', '')
-        _cleaned_address_key = vfuncs.only_text_and_numbers(_address_key)
-        vep_key_dict['addr_text'] = _cleaned_address_key
-        vep_key_dict['addr_key'] = RecordKeyGenerator(_cleaned_address_key).hash
-
-    vep_key_dict['uses_mailzip'] = _uses_mailzip
-
-    if any(vep_key_dict.values()):
-        if all([x for x in self.address_list if x.address_type in AddressTypeList]):
-            _residence = next((x for x in self.address_list if x.address_type == AddressType.RESIDENCE), None)
-            if _uses_mailzip and _residence and (_rzip5 := _residence.zip5):
-                raise PydanticCustomError(
-                    'uses_mailzip_with_residential_zip_present',
-                    "VEP Keys are being generated with a Mail Zipcode, But Residential Zips are present",
-                    {
-                        'mail_zip5': _zip5,
-                        'residence_zip5': _rzip5,
-                    }
-                )
-        self.vep_keys = VEPMatch(**{k: v for k, v in vep_key_dict.items() if v})
-    else:
-        self.vep_keys = None
-    return self
-
-
-def validate_election_history(self) -> Self:
-    election_validator = StateElectionHistoryValidator()
-    if self.data.settings.get('FILE-TYPE') == 'voterfile':
-        if _state_name := self.data.settings.get('STATE').get('abbreviation'):
-            match _state_name:
-                case 'TX':
-                    election_validator.TEXAS(self)
-                case _:
-                    raise ValueError(f"State not supported: {_state_name}")
-    return self
+# Define type aliases for readability
+PassedRecords = Iterable[Type[ValidatorConfig]]
+InvalidRecords = Iterable[Type[ValidatorConfig]]
+ValidationResults = Tuple[PassedRecords, InvalidRecords]
 
 
 def check_if_fields_exist(self):
@@ -884,6 +156,16 @@ def check_if_fields_exist(self):
     return self
 
 
+# TODO: Modify to create a collected phones set
+
+# TODO: Modify Address Storage so it keeps address ID from address collections table in the record information
+
+# TODO: Figure out a way to do district combinations so there's a table of combinations linked to each other
+#  and that combination table can be linked to the record.
+
+# TODO: With the district combinations, figure out a way to check if there's some districts, but not others already
+#  in the database, if so, go ahead and expand the comination into the record.
+#  May not need to do that though if it's just generating a list of districts and creating combinations accordingly.
 class PreValidationCleanUp(RecordBaseModel):
     data: Annotated[RecordRenamer, Field(...)]
     person_details: Annotated[Optional[Dict[str, Any]], Field(default_factory=dict)]
@@ -891,6 +173,11 @@ class PreValidationCleanUp(RecordBaseModel):
     date_format: Annotated[Any, Field(default=None)]
     settings: Annotated[Optional[Dict[str, Any]], Field(default=None)]
     raw_data: Annotated[Optional[Dict[str, Any]], Field(default=None)]
+    collected_vendors: Annotated[Set[VendorName], Field(default_factory=set)]
+    collected_addresses: Annotated[Set[Address], Field(default_factory=set)]
+    collected_elections: Annotated[Set[ElectionTypeDetails], Field(default_factory=set)]
+    collected_districts: Annotated[Set[District], Field(default_factory=set)]
+    collected_phones: Annotated[Set[ValidatedPhoneNumber], Field(default_factory=set)]
 
     def _filter(self, start: str):
         result = vfuncs.getattr_with_prefix(start, obj=self.data)
@@ -988,10 +275,10 @@ class PreValidationCleanUp(RecordBaseModel):
 
         return self
 
-    validate_edr = model_validator(mode='after')(validate_date_edr)
+    validate_edr = model_validator(mode='after')(DateValidators.validate_date_edr)
     validate_phones = model_validator(mode='after')(PhoneNumberValidationFuncs.validate_phones)
-    validate_dob = model_validator(mode='after')(validate_date_dob)
-    validate_elections = model_validator(mode='after')(validate_election_history)
+    validate_dob = model_validator(mode='after')(DateValidators.validate_date_dob)
+    validate_elections = model_validator(mode='after')(ElectionValidationFuncs.validate_election_history)
 
     @model_validator(mode='after')
     def validate_name(self):
@@ -1024,6 +311,8 @@ class PreValidationCleanUp(RecordBaseModel):
             new_vendor_dict[vendor] = {k.replace(f'{vendor_title}_', ''): v for k, v in vendor_dict.items() if v}
         if new_vendor_dict:
             for k, v in new_vendor_dict.items():
+                vendor_obj = VendorName(name=k)
+                self.collected_vendors.add(vendor_obj)
                 if v:
                     for _k, _v in v.items():
                         try:
@@ -1031,7 +320,7 @@ class PreValidationCleanUp(RecordBaseModel):
                         except:
                             pass
                         v[_k] = _v
-                    vendors_to_return.append(VendorTags(vendor=k, tags=v))
+                    vendors_to_return.append(VendorTags(vendor_id=vendor_obj.id, tags=v))
 
             self.vendors = vendors_to_return
         return self
@@ -1063,11 +352,9 @@ class PreValidationCleanUp(RecordBaseModel):
                 self.corrected_errors.update({'districts': _district_corrections})
         return self
 
-    #
     @model_validator(mode='after')
     def set_districts(self):
-
-        def _filter(district: str):
+        def _filter(district: str, district_codes_enum):
             data = {
                 k.replace(f'district_{district}_', ''): v
                 for k, v in _districts.items() if k.startswith(f'district_{district}') and v
@@ -1075,30 +362,79 @@ class PreValidationCleanUp(RecordBaseModel):
             if not data:
                 return None
 
-            d = {'type': district}
-            for k, v in data.items():
-                if any(substring in k for substring in ['upper', 'lower', 'congressional']):
-                    d['number'] = v
-                    d['name'] = ' '.join(k.split('_'))
-                elif 'name' in k:
-                    d['name'] = v
-                else:
-                    d.setdefault('attributes', {}).update({k: v})
-            return District(**d)
+            sorted_data = dict(sorted(data.items(), key=lambda item: len(item[0]), reverse=True))
+
+            level_districts = []
+            for k, v in sorted_data.copy().items():
+                d = {'type': district, 'number': None, 'name': None, 'district_code': None}
+                _attributes = {'last_updated': f"{datetime.now(): %Y-%m-%d}"}
+                # Match the key to the correct enum value
+                if district_codes_enum:
+                    for enum_member in district_codes_enum:
+
+                        if (_enum := enum_member.name.lower()) in k:
+                            em = _enum.replace('_', ' ')
+                            k_ = k.replace('_', ' ')
+                            if fuzz.token_sort_ratio(em, k_) > 90:
+                                d['name'] = enum_member.value  # Assign the enum value
+                            else:
+                                d['name'] = k
+                                break  # Stop once a match is found
+                            # Extract letters (district code) and numbers (district number)
+                            district_code = ''.join(filter(str.isalpha, v))  # Keep the letters
+                            district_number = ''.join(filter(str.isdigit, v))  # Keep the numbers
+                            d['number'] = district_number
+                            _attributes.update({'district_code_prefix': district_code})
+
+                # # Check if the key is a 'name' field
+                # if 'name' in k:
+                #     d['name'] = v
+                # else:
+                #     _attributes.update({k.replace('_', ' ' ): v.replace('_', ' ')})
+
+                additional_attributes = {}
+                if _has_city := self.data.settings.get('CITY'):
+                    if _city := _has_city.get('name'):
+                        d['city'] = _city
+                elif _has_county := self.data.settings.get('COUNTY'):
+                    if _county := _has_county.get('name'):
+                        d['county'] = _county
+                elif _has_state := self.data.settings.get('STATE'):
+                    if _state := _has_state.get('abbreviation'):
+                        d['state_abbv'] = _state
+                if additional_attributes:
+                    _attributes.update(additional_attributes)
+                d['state_abbv'] = self.data.settings.get('STATE').get('abbreviation')
+                d['attributes'] = _attributes
+                level_districts.append(District(**d))
+            return level_districts
 
         _districts = vfuncs.getattr_with_prefix('district', self.data)
+
         if _districts:
+            # Map enums for each level
             districts = {
-                'city': _filter('city'),
-                'county': _filter('county'),
-                'state': _filter('state'),
-                'federal': _filter('federal'),
-                'court': _filter('court'),
+                'city': _filter('city', DistrictCodes.POLITICAL.CITY),
+                'county': _filter('county', DistrictCodes.POLITICAL.COUNTY),
+                'state': _filter('state', DistrictCodes.POLITICAL.STATE),
+                'federal': _filter('federal', DistrictCodes.POLITICAL.FEDERAL),
+                'court': _filter('court', DistrictCodes.COURT)
             }
             if not any(list(districts.values())):
                 self.districts = None
             else:
-                self.districts = list(v for k, v in districts.items() if v)
+                _districts = [district for sublist in districts.values() if sublist for district in sublist]
+                _district_ids = [RecordDistrict(district_id=x.id) for x in _districts]
+                for sublist in districts.values():
+                    if sublist:
+                        for district in sublist:
+                            self.collected_districts.add(district)
+                self.collected_districts.update(
+                    {
+                        district for sublist in districts.values() if sublist for district in sublist
+                    }
+                )
+                self.districts = _district_ids
                 self.corrected_errors.update(
                     {f'{k}_districts': 'Parsed district information' for k, v in districts.items() if v}
                 )
@@ -1125,4 +461,11 @@ class PreValidationCleanUp(RecordBaseModel):
         self.input_data = InputData(**_input_data)
         return self
 
-    generate_vep_keys = model_validator(mode='after')(create_vep_keys)
+    generate_vep_keys = model_validator(mode='after')(VEPKeyMaker.create_vep_keys)
+
+    @model_validator(mode='after')
+    def set_file_origin(self):
+        _file_list = [f for f, _ in self.data_sources]
+        if (_file_origin := self.input_data.original_data.get('file_origin')) not in _file_list:
+            self.data_sources.append(DataSource(file=_file_origin))
+        return self

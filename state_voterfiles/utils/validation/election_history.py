@@ -10,7 +10,6 @@ from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from pydantic_core import PydanticCustomError
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
-
 @pydantic_dataclass
 class StateElectionHistoryValidator:
     @staticmethod

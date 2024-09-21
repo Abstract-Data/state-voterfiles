@@ -1,7 +1,7 @@
 from __future__ import annotations
 import multiprocessing
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, Tuple, Any, Type, List, Annotated, Optional, Union, Generator
+from typing import Dict, Iterable, Tuple, Any, Type, List, Annotated, Optional, Union, Generator, Set
 from collections import Counter
 import itertools
 from datetime import datetime
@@ -11,14 +11,15 @@ from contextlib import ExitStack
 
 import logfire
 import pandas as pd
-from pydantic import ValidationError, BaseModel, Field
+from pydantic import ValidationError, BaseModel, Field as PydanticField
 from tqdm import tqdm
 
 # from state_voterfiles.utils.logger import Logger
+from state_voterfiles.utils.pydantic_models.election_details import ElectionTypeDetails, ElectionList
 from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from state_voterfiles.utils.pydantic_models.cleanup_model import PreValidationCleanUp
-from state_voterfiles.utils.abcs.default_validator_abc import RecordValidatorABC
+from state_voterfiles.utils.pydantic_models.field_models import ValidatorBaseModel, District, RecordBaseModel, Address
 
 # Define type aliases for readability
 PassedRecords = Iterable[Type[ValidatorConfig]]
@@ -30,8 +31,32 @@ def default_max_workers():
     return max(1, multiprocessing.cpu_count() - 1)
 
 
+class AddressList(ValidatorConfig):
+    addresses: Set[Address] = PydanticField(default_factory=set)
+
+    def add_or_update(self, new_address: Address):
+        for existing_address in self.addresses:
+            if existing_address.id == new_address.id:
+                existing_address.update(new_address)
+                return
+        self.addresses.add(new_address)
+
+
+class DistrictList(ValidatorConfig):
+    districts: Set[District] = PydanticField(default_factory=set)
+
+    def add_or_update(self, new_district: District):
+        for existing_district in self.districts:
+            if (existing_district.state_abbv == new_district.state_abbv and
+                    existing_district.city == new_district.city and
+                    existing_district.type == new_district.type):
+                existing_district.update(new_district)
+                return
+        self.districts.add(new_district)
+
+
 class RecordErrorValidator(BaseModel):
-    error_id: uuid.uuid4 = Field(default_factory=uuid.uuid4)
+    error_id: uuid.uuid4 = PydanticField(default_factory=uuid.uuid4)
     error_type: str
     data: dict
     created_at: Optional[datetime] = None
@@ -40,14 +65,14 @@ class RecordErrorValidator(BaseModel):
 class ErrorDetails(ValidatorConfig):
     point_of_failure: Annotated[str, ...]
     record_values: Annotated[Dict[str, Any], ...]
-    rename_values: Annotated[RecordRenamer, Field(default=None)]
-    cleanup_values: Annotated[Optional[Dict[str, Any]], Field(default=None)]
-    models: Annotated[Dict[str, str], Field(default={
+    rename_values: Annotated[RecordRenamer, PydanticField(default=None)]
+    cleanup_values: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    models: Annotated[Dict[str, str], PydanticField(default={
         'rename': ValidatorConfig.__name__,
         'cleanup': PreValidationCleanUp.__name__,
-        'final': RecordValidatorABC.__name__
+        'final': RecordBaseModel.__name__
     })]
-    errors: Annotated[List[dict], Field(default_factory=list)]
+    errors: Annotated[List[dict], PydanticField(default_factory=list)]
 
 
 @dataclass
@@ -72,12 +97,14 @@ class CreateValidator:
     """
     state_name: Tuple[str, str]
     renaming_validator: Type[ValidatorConfig]
-    record_validator: Type[RecordValidatorABC]
-    cleanup_validator: Type[PreValidationCleanUp] = field(default=PreValidationCleanUp)
-    error_validator: Type[RecordErrorValidator] = field(default=RecordErrorValidator)
+    record_validator: Type[RecordBaseModel]
+    cleanup_validator: PreValidationCleanUp = field(default=PreValidationCleanUp)
+    error_validator: RecordErrorValidator = field(default=RecordErrorValidator)
     valid: PassedRecords = field(default=None)
     invalid: InvalidRecords = field(default=None)
     errors: pd.DataFrame = field(default=None)
+    elections: ElectionList = field(default_factory=ElectionList)
+    districts: DistrictList = field(default_factory=DistrictList)
     _input_record_counter: int = 0
     _valid_counter: int = 0
     _invalid_counter: int = 0
@@ -106,12 +133,11 @@ class CreateValidator:
         self._input_record_counter += 1
 
         def attempt_validation(
-                _record_to_validate: Type[BaseModel] | Dict[str, Any],
+                _record_to_validate: BaseModel | Dict[str, Any],
                 _validator: Type[BaseModel],
                 _validation_stage: str,
                 _error_func: Type[ErrorDetails] = error_info,
                 **kwargs):
-
             if isinstance(_record_to_validate, BaseModel):
                 record_dict = dict(_record_to_validate)
             elif isinstance(_record_to_validate, dict):
@@ -160,7 +186,14 @@ class CreateValidator:
             )
 
             if status == "valid":
-                _cleanup = result.model_dump(exclude={'data': True})
+                if hasattr(result, 'collected_districts'):
+                    for district in result.collected_districts:
+                        self.districts.add_or_update(district)
+                if hasattr(result, 'collected_elections'):
+                    for election in result.collected_elections:
+                        self.elections.add_or_update(election)
+                _cleanup = result.model_dump(exclude={'data', 'collected_districts', 'collected_elections'})
+
                 final_error_info = partial(
                     error_info,
                     point_of_failure="final",
@@ -230,13 +263,15 @@ class CreateValidator:
                 raise ValueError("result_type must be either 'valid' or 'invalid'")
 
             with ExitStack() as stack:
-                ctx = logfire.span(f"Getting {result_type} {self.state_name[1]} records for {self.state_name[0].title()}...")
+                ctx = logfire.span(
+                    f"Getting {result_type} {self.state_name[1]} records for {self.state_name[0].title()}...")
                 stack.enter_context(ctx)
                 pbar = tqdm(desc=f"Generating {result_type} records", leave=True)
                 for status, record in _validation_gen[self._iter_count]:
                     if status == result_type:
                         pbar.update(1)
                         yield record
+
         self.valid = get_records("valid")
         self.invalid = get_records("invalid")
         return self

@@ -1,30 +1,35 @@
 from state_tools import SetupState, StateVoterFile
 
 
-texas = SetupState('texas')
+texas = SetupState('texas', city='austin')
+texas.setup_voterfiles()
 
-tx = StateVoterFile('texas')
-pa = StateVoterFile('pennsylvania')
-mt = StateVoterFile('montana')
-
-
-def test_validation(state: StateVoterFile):
-    state.read()
-    state.validate()
-
-    test_list = []
-    counter = 0
-    for r in state.validation.valid:
-        counter += 1
-        test_list.append(r)
-        if counter > 100:
-            break
-    return test_list
+atx = StateVoterFile('texas', city='austin')
+atx.read()
+atx.validate()
+records = next(atx.validation.valid)
+# tx = StateVoterFile('texas', city='austin')
+# pa = StateVoterFile('pennsylvania')
+# mt = StateVoterFile('montana')
 
 
-tx_test = test_validation(tx)
-pa_test = test_validation(pa)
-mt_test = test_validation(mt)
+# def test_validation(state: StateVoterFile):
+#     state.read()
+#     state.validate()
+#
+#     test_list = []
+#     counter = 0
+#     for r in state.validation.valid:
+#         counter += 1
+#         test_list.append(r)
+#         if counter > 100:
+#             break
+#     return test_list
+#
+#
+# tx_test = test_validation(tx)
+# pa_test = test_validation(pa)
+# mt_test = test_validation(mt)
 
 
 
