@@ -5,6 +5,8 @@ from datetime import date
 from pydantic import Field as PydanticField
 from pydantic_extra_types.phone_numbers import PhoneNumber as PydanticPhoneNumber
 from pydantic.types import PastDate
+
+from state_voterfiles.utils.pydantic_models.base import ValidatorBaseModel
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from state_voterfiles.utils.pydantic_models.election_details import VotedInElection
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
@@ -16,9 +18,6 @@ from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 #  Will need to consider how to do this for target and voter file data.
 
 # TODO: Figure out where and how to build linked models, specifically for addresses.
-
-class ValidatorBaseModel(ValidatorConfig):
-    id: Optional[int] = PydanticField(default=None)
 
 
 class PersonName(ValidatorBaseModel):
@@ -387,18 +386,6 @@ class CustomFields(ValidatorConfig):
     ]
 
 
-# class Election(ValidatorBaseModel):
-#     election_type: Annotated[str, PydanticField(description="Type of election (e.g., 'general', 'primary')")]
-#     year: Annotated[int, PydanticField(..., description="Year of election")]
-#     vote_date: Annotated[Optional[date], PydanticField(default=None, description="Date person voted")]
-#     vote_method: Annotated[
-#         Optional[str], PydanticField(default=None, description="Method of voting (e.g., 'mail', 'in-person')")]
-#     primary_party: Annotated[
-#         Optional[str], PydanticField(default=None, description="Party affiliation for primary elections")]
-#     attributes: Annotated[Dict[str, Any], PydanticField(default_factory=dict,
-#                                                         description="Additional attributes specific to the election type")]
-
-
 class DataSource(ValidatorBaseModel):
     file: Annotated[str, PydanticField(..., description="Name of the file")]
     processed_date: Annotated[date, PydanticField(default=date.today(), description="Date the file was processed")]
@@ -406,23 +393,3 @@ class DataSource(ValidatorBaseModel):
     def __hash__(self):
         return hash(self.file)
 
-
-class RecordBaseModel(ValidatorBaseModel):
-    name: Annotated[Optional[PersonName], PydanticField(default=None)]
-    voter_registration: Annotated[Optional[VoterRegistration], PydanticField(default=None)]
-    address_list: Annotated[Optional[List[Address]], PydanticField(default_factory=list)]
-    districts: Annotated[Optional[List[RecordDistrict]], PydanticField(default=None)]
-    phone: Annotated[Optional[List[ValidatedPhoneNumber]], PydanticField(default=None)]
-    vendors: Annotated[Optional[List[VendorTags]], PydanticField(default=None)]
-    election_history: Annotated[
-        Optional[List[VotedInElection]],
-        PydanticField(
-            default=None,
-            description='List of election history records'
-        )
-    ]
-    unassigned: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
-    vep_keys: Annotated[Optional[VEPMatch], PydanticField(default_factory=VEPMatch)]
-    corrected_errors: Annotated[Dict[str, Any], PydanticField(default_factory=dict)]
-    input_data: Annotated[Optional[InputData], PydanticField(default=None)]
-    data_sources: Annotated[List[DataSource], PydanticField(default=[])]

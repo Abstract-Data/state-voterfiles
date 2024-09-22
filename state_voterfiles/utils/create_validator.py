@@ -47,11 +47,14 @@ class DistrictList(ValidatorConfig):
 
     def add_or_update(self, new_district: District):
         for existing_district in self.districts:
-            if (existing_district.state_abbv == new_district.state_abbv and
-                    existing_district.city == new_district.city and
-                    existing_district.type == new_district.type):
+            if existing_district.id == new_district.id:
                 existing_district.update(new_district)
                 return
+            # if (existing_district.state_abbv == new_district.state_abbv and
+            #         existing_district.city == new_district.city and
+            #         existing_district.type == new_district.type):
+            #     existing_district.update(new_district)
+            #     return
         self.districts.add(new_district)
 
 

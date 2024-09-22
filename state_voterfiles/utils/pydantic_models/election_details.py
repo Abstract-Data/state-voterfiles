@@ -71,22 +71,3 @@ class VotedInElection(ValidatorConfig):
 
     def __hash__(self):
         return hash((self.election_id, self.record_id, self.vote_date))
-
-
-class ElectionList(ValidatorConfig):
-    elections: Set[ElectionTypeDetails] = PydanticField(default_factory=set)
-
-    def add_or_update(self, new_election: ElectionTypeDetails):
-        for existing_election in self.elections:
-            if (existing_election.year == new_election.year and
-                    existing_election.election_type == new_election.election_type and
-                    existing_election.state == new_election.state):
-                existing_election.update(new_election)
-                return
-        self.elections.add(new_election)
-
-    def get_sorted_elections(self) -> List[ElectionTypeDetails]:
-        return sorted(self.elections, key=lambda x: x.year if not x.dates else min(x.dates))
-
-    def __iter__(self):
-        return iter(self.get_sorted_elections())

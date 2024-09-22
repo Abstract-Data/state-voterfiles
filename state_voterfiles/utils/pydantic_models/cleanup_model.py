@@ -420,20 +420,25 @@ class PreValidationCleanUp(RecordBaseModel):
                 'federal': _filter('federal', DistrictCodes.POLITICAL.FEDERAL),
                 'court': _filter('court', DistrictCodes.COURT)
             }
-            if not any(list(districts.values())):
+            # else:
+            all_districts = [district for sublist in districts.values() if sublist for district in sublist]
+
+            if not all_districts:
                 self.districts = None
             else:
-                _districts = [district for sublist in districts.values() if sublist for district in sublist]
-                _district_ids = [RecordDistrict(district_id=x.id) for x in _districts]
-                for sublist in districts.values():
-                    if sublist:
-                        for district in sublist:
-                            self.collected_districts.add(district)
-                self.collected_districts.update(
-                    {
-                        district for sublist in districts.values() if sublist for district in sublist
-                    }
-                )
+                self.districts = all_districts
+                self.collected_districts.update(all_districts)
+            #     _districts = [district for sublist in districts.values() if sublist for district in sublist]
+                _district_ids = [RecordDistrict(district_id=x.id) for x in all_districts]
+            #     for sublist in districts.values():
+            #         if sublist:
+            #             for district in sublist:
+            #                 self.collected_districts.add(district)
+                # self.collected_districts.update(
+                #     {
+                #         district for sublist in districts.values() if sublist for district in sublist
+                #     }
+                # )
                 self.districts = _district_ids
                 self.corrected_errors.update(
                     {f'{k}_districts': 'Parsed district information' for k, v in districts.items() if v}
