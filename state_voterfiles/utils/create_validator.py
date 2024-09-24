@@ -2,7 +2,7 @@ from __future__ import annotations
 import multiprocessing
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, Tuple, Any, Type, List, Annotated, Optional, Union, Generator, Set
-from collections import Counter
+from collections import Counter, defaultdict
 import itertools
 from datetime import datetime
 import uuid
@@ -15,11 +15,19 @@ from pydantic import ValidationError, BaseModel, Field as PydanticField
 from tqdm import tqdm
 
 # from state_voterfiles.utils.logger import Logger
-from state_voterfiles.utils.pydantic_models.election_details import ElectionTypeDetails, ElectionList
-from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-from state_voterfiles.utils.pydantic_models.cleanup_model import PreValidationCleanUp
-from state_voterfiles.utils.pydantic_models.field_models import ValidatorBaseModel, District, RecordBaseModel, Address
+# from .db_models.categories.election_list import FileElectionList
+from .pydantic_models.rename_model import RecordRenamer
+from .pydantic_models.config import ValidatorConfig
+from .pydantic_models.cleanup_model import (
+    PreValidationCleanUp,
+    RecordBaseModel,
+    Address,
+    District,
+    ElectionTypeDetails,
+    VendorName,
+    VotedInElection
+)
+# from .db_models.fields import District, Address, VendorName, ElectionTypeDetails
 
 # Define type aliases for readability
 PassedRecords = Iterable[Type[ValidatorConfig]]
@@ -29,33 +37,6 @@ ValidationResults = Tuple[PassedRecords, InvalidRecords]
 
 def default_max_workers():
     return max(1, multiprocessing.cpu_count() - 1)
-
-
-class AddressList(ValidatorConfig):
-    addresses: Set[Address] = PydanticField(default_factory=set)
-
-    def add_or_update(self, new_address: Address):
-        for existing_address in self.addresses:
-            if existing_address.id == new_address.id:
-                existing_address.update(new_address)
-                return
-        self.addresses.add(new_address)
-
-
-class DistrictList(ValidatorConfig):
-    districts: Set[District] = PydanticField(default_factory=set)
-
-    def add_or_update(self, new_district: District):
-        for existing_district in self.districts:
-            if existing_district.id == new_district.id:
-                existing_district.update(new_district)
-                return
-            # if (existing_district.state_abbv == new_district.state_abbv and
-            #         existing_district.city == new_district.city and
-            #         existing_district.type == new_district.type):
-            #     existing_district.update(new_district)
-            #     return
-        self.districts.add(new_district)
 
 
 class RecordErrorValidator(BaseModel):
@@ -106,8 +87,11 @@ class CreateValidator:
     valid: PassedRecords = field(default=None)
     invalid: InvalidRecords = field(default=None)
     errors: pd.DataFrame = field(default=None)
-    elections: ElectionList = field(default_factory=ElectionList)
-    districts: DistrictList = field(default_factory=DistrictList)
+    elections: Set[ElectionTypeDetails] = field(default_factory=set)
+    vote_types: Set[VotedInElection] = field(default_factory=set)
+    districts: Set[District] = field(default_factory=set)
+    addresses: Set[Address] = field(default_factory=set)
+    vendors: Set[VendorName] = field(default_factory=set)
     _input_record_counter: int = 0
     _valid_counter: int = 0
     _invalid_counter: int = 0
@@ -191,25 +175,44 @@ class CreateValidator:
             if status == "valid":
                 if hasattr(result, 'collected_districts'):
                     for district in result.collected_districts:
-                        self.districts.add_or_update(district)
+                        self.districts.add(district)
                 if hasattr(result, 'collected_elections'):
                     for election in result.collected_elections:
-                        self.elections.add_or_update(election)
-                _cleanup = result.model_dump(exclude={'data', 'collected_districts', 'collected_elections'})
+                        self.elections.add(election)
+                if hasattr(result, "collected_addresses"):
+                    for address in result.collected_addresses:
+                        self.addresses.add(address)
+                if hasattr(result, "collected_vendors"):
+                    for vendor in result.collected_vendors:
+                        self.vendors.add(vendor)
+                if hasattr(result, 'collected_votes'):
+                    for vote in result.collected_votes:
+                         self.vote_types.add(vote.election)
 
-                final_error_info = partial(
-                    error_info,
-                    point_of_failure="final",
-                    rename_values=_cleanup,
-                    cleanup_values=_cleanup,
-                )
-                status, result = attempt_validation(
-                    _record_to_validate=result,
-                    _validator=self.record_validator,
-                    _validation_stage="final",
-                    _error_func=final_error_info
-                )
-                return status, result
+                # _cleanup = result.model_dump(
+                #     exclude={
+                #         'data',
+                #         'collected_districts',
+                #         'collected_elections',
+                #         'collected_addresses',
+                #         'collected_vendors',
+                #         'collected_votes'
+                #     }
+                # )
+                #
+                # final_error_info = partial(
+                #     error_info,
+                #     point_of_failure="final",
+                #     rename_values=_cleanup,
+                #     cleanup_values=_cleanup,
+                # )
+                # status, result = attempt_validation(
+                #     _record_to_validate=result,
+                #     _validator=self.record_validator,
+                #     _validation_stage="final",
+                #     _error_func=final_error_info
+                # )
+                # return status, result
             return status, result
         return status, result
 
@@ -277,6 +280,7 @@ class CreateValidator:
 
         self.valid = get_records("valid")
         self.invalid = get_records("invalid")
+
         return self
 
     def get_errors(self) -> pd.DataFrame:

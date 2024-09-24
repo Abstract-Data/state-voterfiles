@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import abc
-from state_voterfiles.utils.readers.toml_reader import TomlReader
+from state_voterfiles.utils.readers import TomlReader
 from typing import Any, Dict
 from pathlib import Path
 

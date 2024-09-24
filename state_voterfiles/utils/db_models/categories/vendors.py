@@ -1,0 +1,17 @@
+from typing import Set, Annotated
+
+from pydantic import Field as PydanticField
+
+from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC
+from state_voterfiles.utils.db_models.fields.vendor import VendorName
+
+
+class FileVendorNameList(FileCategoryListABC):
+    vendors: Annotated[Set[VendorName], PydanticField(default_factory=set)]
+
+    def add_or_update(self, new_vendor: VendorName):
+        for existing_vendor in self.vendors:
+            if existing_vendor.id == new_vendor.id:
+                existing_vendor.update(new_vendor)
+                return
+        self.vendors.add(new_vendor)

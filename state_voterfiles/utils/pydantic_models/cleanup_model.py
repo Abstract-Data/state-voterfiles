@@ -18,31 +18,29 @@ from pydantic import ValidationError, BaseModel, Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
-from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
+from state_voterfiles.utils.funcs import RecordKeyGenerator
 import state_voterfiles.utils.validation.default_helpers as helpers
 import state_voterfiles.utils.validation.default_funcs as vfuncs
 from state_voterfiles.utils.validation.texas_elections import TexasElectionHistoryValidator
-from state_voterfiles.utils.pydantic_models.field_models import (
-    ValidatorConfig,
-    ValidatedPhoneNumber,
-    Address,
-    PersonName,
-    VoterRegistration,
-    VEPMatch,
-    District,
-    RecordDistrict,
-    CustomFields,
-    VendorName,
-    VendorTags,
-    InputData,
+
+
+from state_voterfiles.utils.db_models.record import (
     RecordBaseModel,
-    DataSource
+    PersonName,
+    Address,
+    VoterRegistration,
+    VendorTags,
+    ValidatedPhoneNumber,
+    VEPMatch,
+    InputData,
+    DataSource,
+    District,
+    RecordModel,
 )
-from state_voterfiles.utils.pydantic_models.election_details import (
-    VotedInElection,
-    ElectionTypeDetails,
-    ElectionList
-)
+from ..db_models.fields.elections import ElectionTypeDetails, VotedInElection, RecordElectionVote
+from ..db_models.fields.vendor import VendorName
+from ..pydantic_models.config import ValidatorConfig
+
 from state_voterfiles.utils.helpers.district_codes import DistrictCodes
 from state_voterfiles.utils.funcs.validation.address import AddressType, AddressValidationFuncs, AddressTypeList
 from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationFuncs
@@ -170,14 +168,17 @@ class PreValidationCleanUp(RecordBaseModel):
     data: Annotated[RecordRenamer, Field(...)]
     person_details: Annotated[Optional[Dict[str, Any]], Field(default_factory=dict)]
     input_voter_registration: Annotated[Optional[Dict[str, Any]], Field(default_factory=dict)]
+    mailing_id: Annotated[Optional[str], Field(default=None)]
+    residential_id: Annotated[Optional[str], Field(default=None)]
+    address_list: Annotated[List[Address], Field(default_factory=list)]
     date_format: Annotated[Any, Field(default=None)]
     settings: Annotated[Optional[Dict[str, Any]], Field(default=None)]
     raw_data: Annotated[Optional[Dict[str, Any]], Field(default=None)]
-    collected_vendors: Annotated[Set[VendorName], Field(default_factory=set)]
-    collected_addresses: Annotated[Set[Address], Field(default_factory=set)]
+    vendor_tags: Annotated[List[VendorTags], Field(default_factory=list)]
+    election_history: Annotated[List[VotedInElection], Field(default_factory=list)]
     collected_elections: Annotated[Set[ElectionTypeDetails], Field(default_factory=set)]
-    collected_districts: Annotated[Set[District], Field(default_factory=set)]
-    collected_phones: Annotated[Set[ValidatedPhoneNumber], Field(default_factory=set)]
+    collected_addresses: Annotated[Set[Address], Field(default_factory=set)]
+    collected_vendors: Annotated[Set[VendorName], Field(default_factory=set)]
 
     def _filter(self, start: str):
         result = vfuncs.getattr_with_prefix(start, obj=self.data)
@@ -270,7 +271,13 @@ class PreValidationCleanUp(RecordBaseModel):
                 if other_fields:
                     d.setdefault('other_fields', {}).update(other_fields)
                 d['address_type'] = address_type
-                self.address_list.append(Address(**d))
+                _address = Address(**d)
+                if address_type == 'mail':
+                    self.mailing_id = _address.id
+                elif address_type == 'residential':
+                    self.residential_id = _address.id
+                self.address_list.append(_address)
+                self.collected_addresses.add(_address)
                 address_count += 1  # Increment to check for additional addresses
 
         return self
@@ -322,7 +329,7 @@ class PreValidationCleanUp(RecordBaseModel):
                         v[_k] = _v
                     vendors_to_return.append(VendorTags(vendor_id=vendor_obj.id, tags=v))
 
-            self.vendors = vendors_to_return
+            self.vendor_tags = vendors_to_return
         return self
 
     def validate_districts(self):
@@ -384,7 +391,8 @@ class PreValidationCleanUp(RecordBaseModel):
                             district_code = ''.join(filter(str.isalpha, v))  # Keep the letters
                             district_number = ''.join(filter(str.isdigit, v))  # Keep the numbers
                             d['number'] = district_number
-                            _attributes.update({'district_code_prefix': district_code})
+                            if district_code:
+                                _attributes['district_code_prefix'] = district_code
 
                 # # Check if the key is a 'name' field
                 # if 'name' in k:
@@ -427,9 +435,9 @@ class PreValidationCleanUp(RecordBaseModel):
                 self.districts = None
             else:
                 self.districts = all_districts
-                self.collected_districts.update(all_districts)
+                # self.collected_districts.update(all_districts)
             #     _districts = [district for sublist in districts.values() if sublist for district in sublist]
-                _district_ids = [RecordDistrict(district_id=x.id) for x in all_districts]
+            #     _district_ids = [RecordDistrict(district_id=x.id) for x in all_districts]
             #     for sublist in districts.values():
             #         if sublist:
             #             for district in sublist:
@@ -439,7 +447,7 @@ class PreValidationCleanUp(RecordBaseModel):
                 #         district for sublist in districts.values() if sublist for district in sublist
                 #     }
                 # )
-                self.districts = _district_ids
+                # self.districts = _district_ids
                 self.corrected_errors.update(
                     {f'{k}_districts': 'Parsed district information' for k, v in districts.items() if v}
                 )

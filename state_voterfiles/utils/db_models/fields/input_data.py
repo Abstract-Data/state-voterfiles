@@ -1,7 +1,21 @@
-from ..base import Base, mapped_column, Mapped
-from typing import Dict, Any, List
+from __future__ import annotations
+from typing import Dict, Any, List, Annotated, Optional
+
 from sqlalchemy import JSON
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, mapped_column, Mapped
+
+from pydantic import Field as PydanticField
+
+from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel, Base
+
+
+class InputData(ValidatorBaseModel):
+    input_data: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    original_data: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    renamed_data: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    corrections: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    settings: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    date_format: Annotated[Optional[str | List[str]], PydanticField(default=None)]
 
 
 class InputDataModel(Base):

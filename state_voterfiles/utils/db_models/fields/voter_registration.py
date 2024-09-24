@@ -1,8 +1,34 @@
-from ..base import Base, mapped_column, Mapped
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Annotated
 from datetime import date
 from sqlalchemy import String, JSON, Date
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, mapped_column, Mapped
+
+from pydantic import Field as PydanticField
+
+from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel, Base
+
+
+class VoterRegistration(ValidatorBaseModel):
+    vuid: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    edr: Annotated[
+        Optional[date],
+        PydanticField(default=None),
+    ]
+    status: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    county: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    attributes: Annotated[
+        Optional[Dict[str, Any]],
+        PydanticField(default=None)
+    ]
 
 
 class VoterRegistrationModel(Base):

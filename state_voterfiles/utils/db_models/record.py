@@ -1,9 +1,46 @@
 from __future__ import annotations
-from ..base import Base, mapped_column, Mapped
-from typing import Optional, List
+from typing import Optional, List, Annotated, Dict, Any
+
 from sqlalchemy import Integer, ForeignKey
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, mapped_column, Mapped
 import abc
+
+from pydantic import Field as PydanticField
+
+from .model_bases import ValidatorBaseModel, Base
+from .fields.person_name import PersonName, PersonNameModel
+from .fields.voter_registration import VoterRegistration, VoterRegistrationModel
+from .fields.district import District, RecordDistrictModel
+from .fields.phone_number import ValidatedPhoneNumber, ValidatedPhoneNumberModel
+from .fields.vendor import VendorTags, VendorTagsModel
+from .fields.vep_keys import VEPMatch, VEPKeysModel
+from .fields.data_source import DataSource, DataSourceModel
+from .fields.elections import VotedInElection, ElectionTypeDetails, RecordElectionVote
+from .fields.input_data import InputData, InputDataModel
+from .fields.address import Address
+
+
+class RecordBaseModel(ValidatorBaseModel):
+    name: Annotated[Optional[PersonName], PydanticField(default=None)]
+    voter_registration: Annotated[Optional[VoterRegistration], PydanticField(default=None)]
+    mailing_id: Annotated[Optional[str], PydanticField(default=None)]
+    residential_id: Annotated[Optional[str], PydanticField(default=None)]
+    # address_list: Annotated[Optional[List[Address]], PydanticField(default_factory=list)]
+    districts: Annotated[Optional[List[District]], PydanticField(default_factory=list)]
+    phone: Annotated[Optional[List[ValidatedPhoneNumber]], PydanticField(default=None)]
+    vendors: Annotated[Optional[List[VendorTags]], PydanticField(default_factory=list)]
+    election_history: Annotated[
+        Optional[List[VotedInElection]],
+        PydanticField(
+            default_factory=list,
+            description='List of election history records'
+        )
+    ]
+    unassigned: Annotated[Optional[Dict[str, Any]], PydanticField(default=None)]
+    vep_keys: Annotated[VEPMatch, PydanticField(default_factory=VEPMatch)]
+    corrected_errors: Annotated[Dict[str, Any], PydanticField(default_factory=dict)]
+    input_data: Annotated[InputData, PydanticField(default_factory=InputData)]
+    data_sources: Annotated[List[DataSource], PydanticField(default=[])]
 
 
 class RecordModel(Base):

@@ -8,7 +8,7 @@ from state_voterfiles.utils.db_models.fields.address import AddressModel
 from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumberModel
 from state_voterfiles.utils.db_models.fields.vep_keys import VEPKeysModel
 from state_voterfiles.utils.db_models.fields.district import RecordDistrictModel
-from state_voterfiles.utils.db_models.fields.vendor_tags import VendorTagsModel
+from state_voterfiles.utils.db_models.fields.vendor import VendorTagsModel
 from state_voterfiles.utils.db_models.fields.input_data import InputDataModel
 from state_voterfiles.utils.db_models.fields.data_source import DataSourceModel
 from state_voterfiles.utils.db_models.fields.elections import VotedInElectionModel

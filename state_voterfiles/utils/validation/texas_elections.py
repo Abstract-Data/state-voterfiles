@@ -8,7 +8,7 @@ from pydantic import Field as PydanticField
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from icecream import ic
 
-from state_voterfiles.utils.pydantic_models.election_details import VotedInElection, ElectionTypeDetails
+from state_voterfiles.utils.db_models.fields.elections import VotedInElection, ElectionTypeDetails, RecordElectionVote
 from state_voterfiles.utils.helpers.election_history_codes import (
     VoteMethodCodes,
     ElectionTypeCodes,
@@ -134,11 +134,11 @@ class TexasElectionHistoryValidator:
                     )
                 if party := e_data.get(f'{e}PARTY'):
                     if party.startswith('REP'):
-                        info['primary_party'] = PoliticalPartyCodes.REPUBLICAN
+                        info['party'] = PoliticalPartyCodes.REPUBLICAN
                     elif party.startswith('DEM'):
-                        info['primary_party'] = PoliticalPartyCodes.DEMOCRATIC
+                        info['party'] = PoliticalPartyCodes.DEMOCRATIC
                     else:
-                        info['primary_party'] = None
+                        info['party'] = None
                 info.setdefault('attributes', {}).update(
                     {
                         'city': 'Austin',

@@ -1,4 +1,4 @@
-from .base import Base, mapped_column, Mapped
+from .model_bases import Base, mapped_column, Mapped
 from sqlalchemy import String, JSON, Boolean, Date, Integer
 from sqlalchemy.orm import declared_attr, relationship
 from sqlalchemy.dialects.postgresql import ARRAY

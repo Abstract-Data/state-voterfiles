@@ -6,14 +6,14 @@ from pathlib import Path
 
 from state_voterfiles.utils.readers.toml_reader import TomlReader
 from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
-from state_voterfiles.utils.pydantic_models.field_models import RecordBaseModel
+from state_voterfiles.utils.db_models.record import RecordBaseModel
 from state_voterfiles.utils.abcs.file_loader_abc import (
     FileTypeConfigsABC,
     FileLoaderABC,
     VOTERFILE_FIELD_FOLDER,
     VOTERFILE_RECORD_FOLDER,
     CreateValidator,
-    CSVExport
+    CSVExport,
 )
 from state_voterfiles.utils.abcs.state_setup_abc import SetupStateABC
 

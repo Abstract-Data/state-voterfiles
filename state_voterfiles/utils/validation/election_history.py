@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Type
 from datetime import datetime
-from state_voterfiles.utils.pydantic_models.field_models import Election
+from state_voterfiles.utils.db_models.fields.elections import VotedInElection
 from state_voterfiles.utils.validation.election_history_codes import (
     VoteMethodCodes, ElectionTypeCodes, PoliticalPartyCodes
 )
@@ -52,7 +52,7 @@ class StateElectionHistoryValidator:
                     _d['vote_method'] = VoteMethodCodes.ABSENTEE
                 else:
                     _d['vote_method'] = VoteMethodCodes.IN_PERSON
-                e_validator = Election(**_d)
+                e_validator = VotedInElection(**_d)
                 election_list.append(e_validator)
 
         self.election_history = election_list

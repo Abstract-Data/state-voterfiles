@@ -1,7 +1,53 @@
-from ..base import Base, mapped_column, Mapped
-from typing import Optional
+from typing import Optional, Annotated
 from sqlalchemy import String, Boolean
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship, declared_attr, mapped_column, Mapped
+
+from pydantic import Field as PydanticField
+
+from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel, Base
+
+
+class VEPMatch(ValidatorBaseModel):
+    uuid: Annotated[
+        Optional[str],
+        PydanticField(default=None),
+    ]
+    long: Annotated[
+        Optional[str],
+        PydanticField(default=None),
+    ]
+    short: Annotated[
+        Optional[str],
+        PydanticField(default=None),
+    ]
+    name_dob: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    addr_text: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    addr_key: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    full_key: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    full_key_hash: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    best_key: Annotated[
+        Optional[str],
+        PydanticField(default=None)
+    ]
+    uses_mailzip: Annotated[
+        Optional[bool],
+        PydanticField(default=None)
+    ]
 
 
 class VEPKeysModel(Base):

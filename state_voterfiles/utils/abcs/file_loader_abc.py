@@ -12,10 +12,10 @@ from pydantic import BaseModel, Field as PydanticField
 # import logfire
 
 
-from state_voterfiles.utils.create_validator import CreateValidator
+from state_voterfiles.utils.new_create_validator import CreateValidator
 from state_voterfiles.utils.readers.csv_reader import read_csv
-from state_voterfiles.utils.funcs.csv_export import CSVExport
 from state_voterfiles.utils.readers.toml_reader import TomlReader
+from state_voterfiles.utils.funcs import CSVExport
 from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
 from state_voterfiles.utils.pydantic_models.rename_model import create_renamed_model
 # from state_voterfiles.utils.logger import Logger
@@ -264,7 +264,6 @@ class FileLoaderABC(abc.ABC):
                 stack.enter_context(cm)
             yield stack
 
-    @abc.abstractmethod
     @cached_property
     def config(self):
         return self._config(
