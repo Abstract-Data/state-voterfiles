@@ -1,9 +1,11 @@
-from pydantic import ConfigDict, BaseModel
+from pydantic import ConfigDict
 from pydantic.alias_generators import to_camel
 # from logfire.integrations.pydantic import PluginSettings
 
+from sqlmodel import SQLModel
 
-class ValidatorConfig(BaseModel):
+
+class ValidatorConfig(SQLModel):
     """
     A class that defines the configuration for a validator.
 
@@ -24,6 +26,7 @@ class ValidatorConfig(BaseModel):
         str_strip_whitespace=True,
         validate_default=True,
         arbitrary_types_allowed=True,
+        use_enum_values=True,
         # alias_generator=AliasGenerator(
         #     serialization_alias=lambda field_name: to_camel(field_name)
         # )

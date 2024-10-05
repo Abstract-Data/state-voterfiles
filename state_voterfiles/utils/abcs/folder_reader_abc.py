@@ -1,7 +1,7 @@
 import abc
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 import asyncio
 from functools import cached_property
 
@@ -34,53 +34,14 @@ class FolderReaderABC(abc.ABC):
     state: str
     file_type: str
     folder_path: Path
-    _files: List[Path] = field(default_factory=list, init=False)
-    _newest_file: Path = field(default_factory=Path, init=False)
+    files: List[Path] = field(default_factory=list, init=False)
+    newest_file: Path = field(default_factory=Path)
     _files_need_update: bool = field(default=True, init=False)
-    _newest_file_need_update: bool = field(default=True, init=False)
+    _newest_file_need_update: bool = field(default=True)
 
     def __repr__(self):
         return f"{self.state.title()} {self.file_type.title()} Folder"
 
-    @property
-    def logger(self):
-        # return Logger(module_name="FolderReader")
-        return None
-
-    @property
-    def files(self) -> List[Path]:
-        if self._files_need_update:
-            self._compute_files()
-        return self._files
-
-    @files.setter
-    def files(self, value: List[Path]):
-        self._files = value
-        self._files_need_update = False
-        self._newest_file_need_update = True  # Newest file might have changed
-
-    def _compute_files(self):
-        self._files = [
-            Path(x) for x in self.folder_path.iterdir() if x.is_file() and (x.suffix == ".csv" or x.suffix == ".txt")
-        ]
-        # self.logger.info(f"Found {len(self._files)} files in {self.folder_path.stem}")
-        self._files_need_update = False
-
-    @property
-    def newest_file(self) -> Path:
-        if self._newest_file_need_update:
-            self._compute_newest_file()
-        return self._newest_file
-
-    @newest_file.setter
-    def newest_file(self, value: Path):
-        self._newest_file = value
-        self._newest_file_need_update = False
-
-    def _compute_newest_file(self):
-        self._newest_file = sorted(self.files, key=lambda x: x.stat().st_mtime, reverse=True)[0]
-        # self.logger.info(f"Newest file is {self._newest_file}")
-        self._newest_file_need_update = False
 
     async def async_csv_files(self) -> List[Path]:
         _files = [
@@ -91,8 +52,8 @@ class FolderReaderABC(abc.ABC):
                 Path(x) for x in self.folder_path.iterdir() if x.is_file() and x.suffix == ".txt"
             ]
         # self.logger.info(f"Found {len(_files)} files in {self.folder_path.stem}")
-        self._files = _files
-        return self._files
+        self.files = _files
+        return self.files
 
     async def async_newest_file(self):
         self.newest_file = sorted(
@@ -102,7 +63,7 @@ class FolderReaderABC(abc.ABC):
         return self.newest_file
 
     def read(self):
-        if not self._files or not self._newest_file:
+        if not self.files or not self.newest_file:
             self.files = asyncio.run(self.async_csv_files())
             self.newest_file = asyncio.run(self.async_newest_file())
         return self

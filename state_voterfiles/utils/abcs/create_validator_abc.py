@@ -48,7 +48,7 @@ class CreateValidatorABC(abc.ABC):
     def __repr__(self):
         return f"Validation Model: {self.validator.__name__}"
 
-    def validate_single_record(self, record: Dict[str, Any]) -> Generator[ValidatorOutput, None, None]:
+    def validate_single_record(self, record: Dict[str, Any]) -> RunValidationOutput:
         try:
             validated = self.validator.model_validate(record)
             yield 'valid', validated

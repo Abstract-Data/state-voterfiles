@@ -1,17 +1,16 @@
 from __future__ import annotations
+import abc
 from enum import Enum as PyEnum
 from typing import Optional, Annotated, List, Set
 from datetime import date
-
-from sqlalchemy import String, Date, Integer, ForeignKey
-from sqlalchemy.orm import relationship, declared_attr, Mapped, mapped_column
 from sqlalchemy import Enum as SA_Enum
 
 from pydantic import Field as PydanticField
+from sqlmodel import Field as SQLModelField
 
-from state_voterfiles.utils.db_models.model_bases import Base
 from state_voterfiles.utils.funcs import RecordKeyGenerator
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
+from state_voterfiles.utils.validation.election_history_codes import VoteMethodCodes
 
 
 class ElectionType(PyEnum):
@@ -48,19 +47,18 @@ VoteMethodDB = SA_Enum(VoteMethod, name='vote_methods', native_enum=False)
 
 
 class ElectionTypeDetails(ValidatorConfig):
-    id: str = PydanticField(default_factory=lambda: '')
-    year: int
-    election_type: str
-    state: str
-    city: Optional[str] = None
-    county: Optional[str] = None
-    dates: Optional[Set[date]] = PydanticField(default=None)
-    desc: Optional[str] = None
-    voted_records: Optional[List[VotedInElection]] = PydanticField(default_factory=list)
+    id: str =  SQLModelField(default_factory=lambda: '')
+    year: int = SQLModelField(...)
+    election_type: str = SQLModelField(...)
+    state: str = SQLModelField(...)
+    city: str | None = SQLModelField(default=None)
+    county: str | None = SQLModelField(default=None)
+    dates: set[date] | None = SQLModelField(default=None)
+    desc: str | None = SQLModelField(default=None)
 
     def __init__(self, **data):
         super().__init__(**data)
-        self.id = self.generate_hash_key()
+        self.generate_hash_key()
 
     def __hash__(self):
         return hash(self.id)
@@ -72,37 +70,43 @@ class ElectionTypeDetails(ValidatorConfig):
 
     def generate_hash_key(self) -> str:
         # Create a string with the essential properties of the election
-        key_string = f"{self.year}_{self.election_type}_{self.state}"
+        key_string = f"{self.state}"
         if self.city:
-            key_string += f"_{self.city}"
+            key_string += f"-{self.city}"
         if self.county:
-            key_string += f"_{self.county}"
+            key_string += f"-{self.county}"
+        key_string += f"-{self.year}-{self.election_type}"
         # if self.dates:
         #     key_string += f"_{'_'.join(sorted(d.isoformat() for d in self.dates))}"
 
-        # Generate a SHA256 hash of the key string
-        return RecordKeyGenerator.generate_static_key(key_string)  # Using first 16 characters for brevity
+        # # Generate a SHA256 hash of the key string
+        # self.id = RecordKeyGenerator.generate_static_key(key_string)  # Using first 16 characters for brevity
+        self.id = key_string
+        return self.id
 
     def update(self, other: ElectionTypeDetails):
-        if other.dates:
-            self.dates.update(other.dates)
         if other.city and not self.city:
             self.city = other.city
         if other.county and not self.county:
             self.county = other.county
+        if other.dates and not self.dates:
+            self.dates = other.dates
+        if other.desc and not self.desc:
+            self.desc = other.desc
 
 
 class VotedInElection(ValidatorConfig):
-    id: Annotated[Optional[str], PydanticField(default=None)]
-    year: Annotated[int, PydanticField(...)]
-    party: Annotated[Optional[str], PydanticField(default=None)]
-    vote_date: Annotated[Optional[date], PydanticField(default=None)]
-    vote_method: Annotated[Optional[str], PydanticField(default=None)]
-    election_id: Annotated[Optional[str], PydanticField(default=None)]
-    record_vuid: Annotated[Optional[str], PydanticField(default=None)]
-    record_id: Annotated[Optional[int], PydanticField(default=None)]
-    record: Annotated[Optional['RecordBaseModel'], PydanticField(default=None)]
-    election: Annotated[Optional[ElectionTypeDetails], PydanticField(default=None)]
+    id: str | None = SQLModelField(default=None)
+    # year: Annotated[int, PydanticField(...)]
+    party: str | None = SQLModelField(default=None)
+    vote_date: date | None = SQLModelField(default=None)
+    vote_method: VoteMethodCodes | None = SQLModelField(default=None)
+    # election_id: Annotated[Optional[str], PydanticField(default=None)]
+    voter: VoterRegistration | None = SQLModelField(default=None)
+    # record_id: Annotated[Optional[int], PydanticField(default=None)]
+    # record: Annotated[Optional['RecordBaseModel'], PydanticField(default=None)]
+    election_id: str = SQLModelField(...)
+    election: ElectionTypeDetails = SQLModelField(...)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -112,61 +116,62 @@ class VotedInElection(ValidatorConfig):
         return hash(self.id)
 
     def generate_hash_key(self) -> str:
-        key_string = f"{self.election_id}_{self.record_id}_{self.vote_date}"
-        if self.vote_method:
-            key_string += f"_{self.vote_method}"
+        key_string: str = f"{self.election_id}"
         if self.party:
-            key_string += f"_{self.party}"
-        return RecordKeyGenerator.generate_static_key(key_string)
+            key_string += f"-{self.party}"
+        if self.vote_method:
+            key_string += f"-{self.vote_method}"
+        if self.vote_date:
+            key_string += f"-{self.vote_date:  %Y%m%d}"
+
+        return key_string
+
+# class ElectionTypeModel(Base):
+#     __abstract__ = True
+#
+#     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+#     year: Mapped[int] = mapped_column(Integer, nullable=False)
+#     election_type: Mapped[ElectionType] = mapped_column(ElectionTypeDB, nullable=False)
+#     state: Mapped[str] = mapped_column(String, nullable=False)
+#     city: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+#     county: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+#     dates: Mapped[Set[date]] = mapped_column(JSON, nullable=True)
+#     desc: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+#
+#     @declared_attr
+#     @abc.abstractmethod
+#     def voted_in_election(cls):
+#         return relationship("VotedInElection", back_populates="election")
 
 
-class RecordElectionVote(ValidatorConfig):
-    id: Optional[str] = None
-    vote_detail_id: str
-
-    election_desc: Optional[VotedInElection] = None
-
-
-class VotedInElectionModel(Base):
-    __abstract__ = True
-
-    id: Mapped[str] = mapped_column(Integer, primary_key=True)
-    party: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    vote_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    vote_method: Mapped[VoteMethod] = mapped_column(VoteMethodDB, nullable=False)
-    year: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    @declared_attr
-    def election_id(cls) -> Mapped[int]:
-        return mapped_column(Integer, ForeignKey('election_types.id'), nullable=False)
-
-    @declared_attr
-    def election(cls):
-        return relationship("ElectionType", back_populates="voted_records")
-
-    @declared_attr
-    def record_vuid(cls) -> Mapped[Optional[str]]:
-        return mapped_column(String, ForeignKey('record.vuid'), nullable=True)
-
-    @declared_attr
-    def record_id(cls) -> Mapped[int]:
-        return mapped_column(Integer, ForeignKey(f'{cls.__tablename__.replace("election_history", "")}.id'),
-                             nullable=False)
-
-    @declared_attr
-    def record(cls):
-        return relationship(cls.__tablename__.replace("election_history", ""), back_populates="election_history")
-
-    def __hash__(self):
-        return hash(self.id)
-
-
-class RecordElectionVoteModel(Base):
-    __abstract__ = True
-
-    id: Mapped[str] = mapped_column(Integer, primary_key=True)
-    vote_detail_id: Mapped[str] = mapped_column(String, ForeignKey('voted_in_election.id'), nullable=False)
-
-    @declared_attr
-    def election_desc(cls):
-        return relationship("VotedInElection", back_populates="election_desc")
+# class VotedInElectionModel(Base):
+#     __abstract__ = True
+#
+#     id: Mapped[str] = mapped_column(Integer, primary_key=True)
+#     party: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+#     vote_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+#     vote_method: Mapped[VoteMethod] = mapped_column(VoteMethodDB, nullable=False)
+#
+#     @declared_attr
+#     @abc.abstractmethod
+#     def election_id(cls) -> Mapped[int]:
+#         return mapped_column(Integer, ForeignKey('election_types.id'), nullable=False)
+#
+#     @declared_attr
+#     @abc.abstractmethod
+#     def election(cls):
+#         return relationship("ElectionType", back_populates="voted_in_election")
+#
+#     @declared_attr
+#     @abc.abstractmethod
+#     def record_id(cls) -> Mapped[int]:
+#         return mapped_column(Integer, ForeignKey(f'{cls.__tablename__.replace("election_history", "")}.id'),
+#                              nullable=False)
+#
+#     @declared_attr
+#     @abc.abstractmethod
+#     def record(cls):
+#         return relationship(cls.__tablename__.replace("election_history", ""), back_populates="election_history")
+#
+#     def __hash__(self):
+#         return hash(self.id)

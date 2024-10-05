@@ -1,14 +1,15 @@
 from __future__ import annotations
-from typing import Any, Generator, Dict, Annotated, Optional, Callable, Iterable
+from typing import Any, Generator, Dict, Annotated, Optional, Callable, Iterable, ClassVar
 import abc
 from functools import partial, wraps, cached_property
 import contextlib
-from dataclasses import dataclass, field
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import field, dataclass
 
 from tqdm import tqdm
-from pydantic import BaseModel, Field as PydanticField
+from pydantic.dataclasses import dataclass as pydantic_dataclass
+from pydantic import BaseModel, Field as PydanticField, DirectoryPath, FilePath, ConfigDict
 # import logfire
 
 
@@ -24,10 +25,10 @@ from state_voterfiles.utils.pydantic_models.rename_model import create_renamed_m
 
 TEMP_DATA = TomlReader(file=Path(__file__).parents[2] / "folder_paths.toml")
 
-USE_VEP_FILES = False
+USE_VEP_FILES = True
 PACKAGE_DATA_FOLDER = Path(__file__).parents[3] / "data"
 
-DATA_FOLDER = Path("/Users/johneakin/PyCharmProjects/vep-2024/data/voterfiles") if USE_VEP_FILES else PACKAGE_DATA_FOLDER
+DATA_FOLDER = Path("/Users/johneakin/PyCharmProjects/vep-2024/data") if USE_VEP_FILES else PACKAGE_DATA_FOLDER
 
 FIELD_FOLDER = Path(__file__).parents[2] / "field_references" / "states"
 
@@ -101,89 +102,57 @@ def read_one_file_func(folder: Path, **kwargs) -> Generator[Dict, None, None]:
         yield record
 
 
-class FileTypeConfigsABC(BaseModel, abc.ABC):
-    state: Annotated[
-        str,
-        PydanticField(
-            description="The state for which the file is being processed."
+@dataclass
+class FileTypeConfigsABC(abc.ABC):
+    file_type: ClassVar[str]
+    folder: FolderReaderABC
+    file_loader: FileLoaderABC
+    renaming_model: Optional[create_renamed_model] = field(default=None)
+    fields: Optional[TomlReader] = field(default=None)
+    headers: list = field(default=None, init=False)
+    _field_file_path: Path = field(default=None)
+    _record_file_path: Path = field(default=None)
+
+    def __post_init__(self):
+        self.fields = TomlReader(
+            file=self.field_file_path
         )
-    ]
-    county_: Annotated[
-        Optional[str],
-        PydanticField(
-            default=None,
-            description="The county for which the file is being processed."
+        self.renaming_model = create_renamed_model(
+            state=self.file_loader.state,
+            field_path=self.fields.file if self.fields else None
         )
-    ]
-    city_: Annotated[
-        Optional[str],
-        PydanticField(
-            default=None,
-            description="The city for which the file is being processed."
-        )
-    ]
-    field_file_lambda: Callable[[str], Path]
-    record_folder_lambda: Callable[[str], Path]
-    _field_file_path: Annotated[Path, PydanticField(default=None)]
-    _record_file_path: Annotated[Path, PydanticField(default=None)]
-    _fields: Annotated[Optional[TomlReader], PydanticField(default=None)]
-    _headers: Annotated[Optional[list], PydanticField(default=None)]
-    _folder: Annotated[Optional[FolderReaderABC], PydanticField(default=None)]
-    _renaming_model: Annotated[Optional[create_renamed_model], PydanticField(default=None)]
+        self.folder = self.folder(
+            state=self.file_loader.state,
+            file_type=self.file_type,
+            folder_path=self.record_file_path
+        ).read()
+        if _headers := self.fields.data.get('HEADERS'):
+            self.headers = _headers
 
     @property
+    @abc.abstractmethod
     def field_file_path(self):
-        self._field_file_path = self.field_file_lambda(
-            state=self.state,
-            county=self.county_.lower() if self.county_ else None,
-            city=self.city_.lower() if self.city_ else None
-        )
+        folder = FIELD_FOLDER / (state := str(self.file_loader.state).lower())
+        if county := self.file_loader.county:
+             p = folder / f"{state}-county-{county.lower()}.toml"
+        elif city := self.file_loader.city:
+             p = folder / f"{state}-city-{city.lower()}.toml"
+        else:
+             p = folder / f"{state}-fields.toml"
+        self._field_file_path = p
         return self._field_file_path
 
     @property
-    def record_file_path(self):
-        self._record_file_path = self.record_folder_lambda(
-            state=self.state,
-            county=self.county_.lower() if self.county_ else None,
-            city=self.city_.lower() if self.city_ else None
-        )
+    @abc.abstractmethod
+    def record_file_path(self) -> Path:
+        data_folder = DATA_FOLDER / self.file_type / (state := str(self.file_loader.state).lower())
+        if city := self.file_loader.city:
+            data_folder = data_folder / f"{state}-city-{city.lower()}"
+        elif county := self.file_loader.county:
+            data_folder = data_folder / f"{state}-county-{county.lower()}"
+
+        self._record_file_path = data_folder
         return self._record_file_path
-    @property
-    def fields(self):
-        self._fields = TomlReader(
-            file=self.field_file_path
-        )
-        return self._fields
-
-    @property
-    def headers(self):
-        _headers = self.fields.data.get(
-            'HEADERS'
-        )
-        if _headers:
-            self._headers = create_headers_list(
-                _headers
-            )
-            return self._headers
-
-    @property
-    def folder(self):
-        _record_folder = self.record_file_path
-        self._folder = FolderReaderABC(
-            state=self.state,
-            file_type="voterfiles",
-            folder_path=_record_folder
-        ).read()
-        return self._folder
-
-    @property
-    def renaming_model(self):
-        _model = create_renamed_model(
-            state=self.state,
-            field_path=self.fields.file
-        )
-        self._renaming_model = _model
-        return self._renaming_model
 
 
 @dataclass
@@ -224,83 +193,52 @@ class FileLoaderABC(abc.ABC):
     state: str
     county: Optional[str] = field(default=None)
     city: Optional[str] = field(default=None)
-    _config: partial[FileTypeConfigsABC] = None
+    config: FileTypeConfigsABC = None
     data: Any = None
     fields: TomlReader = None
-    context_managers: list = field(default_factory=list)
-    _validation: CreateValidator = None
-    _folder: FolderReaderABC = None
-    _newest_file: Path = None
+    # context_managers: list = field(default_factory=list)
+    validation: CreateValidator = None
+    _newest_file: FilePath = None
     _read_all_files: bool = False
 
     @abc.abstractmethod
-    def __post_init__(self):
+    def __init__(self):
+        self.config = ...
         self.validation = ...
-
-    def __init__(self, *args, **kwargs):
-        # Initialize the context immediately
-        self.context_managers.append(f"{self.__class__.__name__} for {self.state.title()}")
-
-        # Call the default __post_init__ if necessary
-        self.__post_init__()
-
-        # Now proceed with any other initialization tasks you might have
-        super().__init__(*args, **kwargs)
 
     def __repr__(self):
         """Returns a string representation of the state voter file."""
         return f"{self.state.title()} Voter File"
 
-    @contextlib.contextmanager
-    def context_manager_stack(self, context_managers):
-        """
-        A context manager that manages multiple context managers using ExitStack.
-
-        Parameters:
-        context_managers (list): A list of context manager instances to be managed.
-        """
-        with contextlib.ExitStack() as stack:
-            for cm in context_managers:
-                stack.enter_context(cm)
-            yield stack
-
-    @cached_property
-    def config(self):
-        return self._config(
-            state=self.state,
-            county_=self.county,
-            city_=self.city
-        )
-
+    # @contextlib.contextmanager
+    # def context_manager_stack(self, context_managers):
+    #     """
+    #     A context manager that manages multiple context managers using ExitStack.
+    #
+    #     Parameters:
+    #     context_managers (list): A list of context manager instances to be managed.
+    #     """
+    #     with contextlib.ExitStack() as stack:
+    #         for cm in context_managers:
+    #             stack.enter_context(cm)
+    #         yield stack
     @cached_property
     def logger(self):
         """Returns a logger instance with the module name set to 'StateFileFunctions'."""
         return None
 
-    @property
-    def validation(self):
-        return self._validation
-
-    @validation.setter
-    def validation(self, value):
-        self._validation = value
-
-    @validation.getter
-    def validation(self):
-        return self._validation
-
-    def validate(self, records: Iterable[Dict[str, Any]] = None) -> CreateValidator:
+    def validate(self, records: Iterable[Dict[str, Any]] = None, **kwargs) -> CreateValidator:
         """Validates the voter file records and returns the validation instance."""
         # self.context_managers.append(
         #     logfire.span(f"Validating {self.__class__.__name__} records for {self.state.title()}"))
         # logfire.info(f"Validating {self.__class__.__name__} records for {self.state.title()}")
-        with self.context_manager_stack(self.context_managers):
-            if records:
-                self.validation.run_validation(
-                    records=records,
-                )
-            else:
-                self.validation.run_validation(self.data)
+        # with self.context_manager_stack(self.context_managers):
+        if records:
+            self.validation.run_validation(
+                records=records,
+            )
+        else:
+            self.validation.run_validation(self.data)
         return self.validation
 
     def read_all_files(self) -> FileLoaderABC:
@@ -314,43 +252,27 @@ class FileLoaderABC(abc.ABC):
     def read(self, file_path: Path = None, uppercase: bool = True, lowercase: bool = None) -> Any:
         """Reads the voter file and returns a data reader instance."""
         _kwargs = {}
-        if self.config.folder.newest_file.suffix == '.txt':
-            _headers = self.config.headers
-            if _headers:
-                _kwargs["headers"] = _headers
-        if uppercase:
-            _kwargs["uppercase"] = uppercase
-        if lowercase:
-            _kwargs["lowercase"] = lowercase
+        # if self.config.folder and self.config.folder.newest_file.suffix == '.txt':
+        #     _kwargs["headers"] = _headers if (_headers := self.config.headers) else None
+        # _kwargs["uppercase"] = uppercase if uppercase else False
+        # _kwargs["lowercase"] = lowercase if lowercase else False
 
         if file_path:
             # logfire.info(f"Reading single file: {file_path.name}")
             # with self.context_manager_stack(self.context_managers):
-            data = read_one_file_func(
-                folder=file_path,
-                **_kwargs
-            ) if _kwargs else read_one_file_func(
-                folder=file_path
-            )
+            data = read_one_file_func(folder=file_path, **_kwargs) if _kwargs else read_one_file_func(folder=file_path)
             return data
+
         elif self._read_all_files:
             # logfire.info(f"Reading all files for {self.state.title()}")
-            _data = read_all_files_func(
-                folder=self.config.folder.files,
-                **_kwargs
-            ) if _kwargs else read_all_files_func(
-                folder=(file for file in self.config.folder.files if 'combined' not in file.name)
-            )
+            _data = read_all_files_func(folder=self.config.folder.files, **_kwargs) \
+                if _kwargs else read_all_files_func(
+                folder=(file for file in self.config.folder.files if 'combined' not in file.name))
 
         else:
             # logfire.info(f"Reading newest file for {self.state.title()}")
-            _data = read_one_file_func(
-                folder=self.config.folder.newest_file,
-                **_kwargs
-            ) if _kwargs else read_one_file_func(
-                folder=self.config.folder.newest_file,
-                **_kwargs
-            )
+            _data = read_one_file_func(folder=self.config.folder.newest_file, **_kwargs) \
+                if _kwargs else read_one_file_func(folder=self.config.folder.newest_file, **_kwargs)
         self.data = _data
         return self.data
 
@@ -358,16 +280,5 @@ class FileLoaderABC(abc.ABC):
         if not self.data:
             self.read()
         # self.context_managers.append(logfire.span(f"Loading {self.state.title()} voter file"))
-        with self.context_manager_stack(self.context_managers):
-            return list(self.data)
-
-    # def combine_and_export(self, records: Generator[Dict[str, Any], None, None] = None) -> CSVExport:
-    #     _file_name = f"{self.state.lower()}_combined_voterfile"
-    #     _path = self.config.folder.folder_path
-    #     _data = records if records else self.data
-    #     self.logger.info(f"Combining all {self.state.title()} voter files to {_path.name}")
-    #     return CSVExport(
-    #         data=_data,
-    #         name=_file_name,
-    #         path=_path
-    #     ).export()
+        # with self.context_manager_stack(self.context_managers):
+        return list(self.data)

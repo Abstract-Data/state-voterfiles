@@ -10,13 +10,13 @@ class VoteMethodCodes(Enum):
 
 
 class PoliticalPartyCodes(Enum):
-    DEMOCRATIC = "Democratic"
-    REPUBLICAN = "Republican"
-    LIBERTARIAN = "Libertarian"
-    GREEN = "Green"
-    CONSTITUTION = "Constitution"
-    AMERICAN_SOLIDARITY = "American Solidarity"
-    ALLIANCE = "Alliance"
+    DEMOCRATIC = "DEM"
+    REPUBLICAN = "REP"
+    LIBERTARIAN = "LIB"
+    GREEN = "GRN"
+    CONSTITUTION = "CON"
+    AMERICAN_SOLIDARITY = "AMS"
+    ALLIANCE = "ALL"
 
     # Additional parties based on various mentions and contexts:
     INDEPENDENT = "Independent"

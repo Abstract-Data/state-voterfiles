@@ -8,7 +8,7 @@ from pydantic import Field as PydanticField
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from icecream import ic
 
-from state_voterfiles.utils.db_models.fields.elections import VotedInElection, ElectionTypeDetails, RecordElectionVote
+from state_voterfiles.utils.db_models.fields.elections import VotedInElection, ElectionTypeDetails
 from state_voterfiles.utils.helpers.election_history_codes import (
     VoteMethodCodes,
     ElectionTypeCodes,
@@ -63,18 +63,20 @@ class TexasElectionHistoryValidator:
                     _d['vote_method'] = VoteMethodCodes.EARLY_VOTING
                 elif v.endswith('A'):
                     _d['vote_method'] = VoteMethodCodes.ABSENTEE
-                else:
+                elif v.endswith(('V', 'D', ''R'')):
                     _d['vote_method'] = VoteMethodCodes.IN_PERSON
+                else:
+                    _d['vote_method'] = None
 
                 _d['state'] = 'TX'
                 e_details = ElectionTypeDetails(**_d)
+                _d['election'] = e_details
                 _d['election_id'] = e_details.id
                 e_validator = VotedInElection(**_d)
                 election_detailed_list.add(e_details)
                 election_list.append(e_validator)
-        for e in election_detailed_list:
-            self.collected_elections.add(e)
-        self.election_history = sorted(election_list, key=lambda x: x.year)
+        # self.elections = sorted(election_detailed_list, key=lambda x: x.year)
+        self.vote_history = election_list
         return self
 
     @staticmethod
@@ -149,10 +151,11 @@ class TexasElectionHistoryValidator:
                 e_details = ElectionTypeDetails(**info)
                 info['election_id'] = e_details.id
                 election_detailed_list.add(e_details)
-                e_obj = VotedInElection(**info)
-                election_list.append(e_obj)
-        self.election_history = sorted(election_list, key=lambda x: x.vote_date)
-        self.collected_elections = election_detailed_list
+                vote_obj = VotedInElection(**info)
+                election_list.append(vote_obj)
+        # self.elections = sorted(election_detailed_list, key=lambda x: x.vote_date)
+        self.vote_history = sorted(election_list, key=lambda x: x.vote_date)
+        # self.collected_elections = election_detailed_list
         return self
 
 

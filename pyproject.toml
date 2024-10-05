@@ -10,7 +10,7 @@ packages = [{include = "state_voterfiles"}]
 python = "^3.10"
 tomli = ">=2.0.1,<2.1.0"
 pandas = "^2.2.2"
-pydantic = "^2.9.1"
+pydantic = "^2.9.2"
 sqlalchemy = "^2.0.35"
 python-dotenv = "^1.0.0"
 tqdm = "^4.65.0"
@@ -30,7 +30,13 @@ geopy = "^2.4.1"
 tenacity =  ">=8.1.0,<9"
 geopandas = "^1.0.1"
 shapely = "^2.0.6"
+sqlmodel = "0.0.21"
+snowflake-connector-python = "^3.12.2"
+snowflake-sqlalchemy = "^1.6.1"
 
+
+[tool.poetry.group.dev.dependencies]
+hypothesis = "^6.112.2"
 
 [build-system]
 requires = ["poetry-core"]

@@ -119,6 +119,10 @@ def include_file_date_imported(func: Callable) -> Callable:
     return wrapper
 
 
+def replace_empty_with_none(record: Dict[str, Any]) -> Dict[str, Any]:
+    reader = csv.DictReader(f, delimiter=_delim, fieldnames=first_row_header)
+    return {k: (v if v != '' else None) for k, v in record.items()}
+
 @overload
 def read_csv(file: str, **kwargs):
     ...
@@ -175,11 +179,12 @@ def read_csv(file: Union[str, Path], **kwargs) -> Generator[Dict[str, Any], None
         if reader:
             _counter = 0
             for record in reader:
-                record = {k: v.upper() for k, v in record.items() if k}
+                record = {k: (v if v != '' else None) for k, v in record.items()}
+                record = {k: v.upper() for k, v in record.items() if k and v}
                 if _uppercase:
-                    record = {k.upper(): v for k, v in record.items() if k}
+                    record = {k.upper(): v for k, v in record.items() if k and v}
                 elif _lowercase:
-                    record = {k.lower(): v for k, v in record.items() if k}
+                    record = {k.lower(): v for k, v in record.items() if k and v}
                 if _state:
                     record["state"] = _state
                 _counter += 1

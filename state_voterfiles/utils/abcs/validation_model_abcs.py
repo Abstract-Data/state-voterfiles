@@ -1,7 +1,9 @@
 from __future__ import annotations
 import abc
+from typing import Optional, Annotated
+from dataclasses import dataclass
 
-from pydantic import Field as PydanticField
+from sqlmodel import Field as SQLModelField
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 
 
@@ -10,14 +12,18 @@ class ValidationListBaseABC(ValidatorConfig, abc.ABC):
 
 
 class FileCategoryListABC(ValidationListBaseABC):
+    id: Annotated[Optional[str], SQLModelField(default=None)]
 
     @abc.abstractmethod
     def add_or_update(self, new_record: ValidatorConfig):
         pass
 
+    @abc.abstractmethod
+    def generate_hash_key(self) -> str:
+        pass
 
 class RecordListABC(ValidationListBaseABC):
-    id: str = PydanticField(default_factory=lambda: '')
+    id: Annotated[str, SQLModelField(default_factory=lambda: '')]
 
     def __init__(self, **data):
         super().__init__(**data)

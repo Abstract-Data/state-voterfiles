@@ -1,5 +1,6 @@
 from typing import Set, Annotated
 
+from sqlmodel import Field as SQLModelField
 from pydantic import Field as PydanticField
 
 from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC
@@ -7,7 +8,7 @@ from state_voterfiles.utils.db_models.fields.vendor import VendorName
 
 
 class FileVendorNameList(FileCategoryListABC):
-    vendors: Annotated[Set[VendorName], PydanticField(default_factory=set)]
+    vendors: set[VendorName] = SQLModelField(default_factory=set)
 
     def add_or_update(self, new_vendor: VendorName):
         for existing_vendor in self.vendors:
@@ -15,3 +16,6 @@ class FileVendorNameList(FileCategoryListABC):
                 existing_vendor.update(new_vendor)
                 return
         self.vendors.add(new_vendor)
+
+    def generate_hash_key(self) -> str:
+        return "_".join(sorted([x.id for x in self.vendors]))

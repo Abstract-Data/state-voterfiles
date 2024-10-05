@@ -10,6 +10,7 @@ from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from pydantic_core import PydanticCustomError
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
+
 @pydantic_dataclass
 class StateElectionHistoryValidator:
     @staticmethod
@@ -45,13 +46,14 @@ class StateElectionHistoryValidator:
                         'invalid_election_type',
                         f"Invalid election type: {e}"
                     )
-
                 if v.endswith('E'):
                     _d['vote_method'] = VoteMethodCodes.EARLY_VOTING
                 elif v.endswith('A'):
                     _d['vote_method'] = VoteMethodCodes.ABSENTEE
-                else:
+                elif len(v) == 1:
                     _d['vote_method'] = VoteMethodCodes.IN_PERSON
+                else:
+                    _d['vote_method'] = None
                 e_validator = VotedInElection(**_d)
                 election_list.append(e_validator)
 

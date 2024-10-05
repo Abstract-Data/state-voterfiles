@@ -1,14 +1,9 @@
 from typing import Any, Dict, Optional, Annotated
 
-from pydantic import Field as PydanticField
+from sqlmodel import Field as SQLModelField, JSON
 
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 
 
 class CustomFields(ValidatorConfig):
-    fields: Annotated[
-        Optional[Dict[str, Any]],
-        PydanticField(
-            default=None,
-        )
-    ]
+    fields: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
