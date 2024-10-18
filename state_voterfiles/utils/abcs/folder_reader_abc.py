@@ -1,11 +1,8 @@
 import abc
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 import asyncio
-from functools import cached_property
-
-# from state_voterfiles.utils.logger import Logger
 
 
 @dataclass

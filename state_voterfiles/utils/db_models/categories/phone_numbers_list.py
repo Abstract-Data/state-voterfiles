@@ -1,8 +1,4 @@
-from __future__ import annotations
-from typing import Set, Annotated
-
 from sqlmodel import Field as SQLModelField
-from pydantic import Field as PydanticField
 
 from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC
 from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumber

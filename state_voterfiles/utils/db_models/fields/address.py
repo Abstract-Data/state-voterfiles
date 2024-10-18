@@ -1,17 +1,26 @@
-from __future__ import annotations
-from typing import Optional, Dict, Any, Annotated
+from typing import Optional, Dict, Any, ForwardRef
+from datetime import datetime
 
-from ..model_bases import ValidatorBaseModel
-from pydantic import Field as PydanticField
-from sqlmodel import Field as SQLModelField
-from state_voterfiles.utils.funcs import RecordKeyGenerator
+from sqlmodel import Field as SQLModelField, JSON, Relationship, SQLModel, Column, DateTime, func
+
+from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
+from state_voterfiles.utils.db_models.model_bases import SQLModelBase
 
 
-class Address(ValidatorBaseModel):
+RecordBaseModel = ForwardRef("RecordBaseModel")
+
+
+class AddressLink(SQLModel, table=True):
+    __tablename__ = 'address_link'
+    address_id: str | None = SQLModelField(default=None, foreign_key=f"address.id", primary_key=True)
+    record_id: Optional[int] = SQLModelField(default=None, foreign_key="recordbasemodel.id", primary_key=True)
+
+
+class Address(SQLModelBase, table=True):
     """
     This should be used for all addresses, you'll need to pass a dictionary of the address fields to the model, versus all values
     """
-    id: str | None = SQLModelField(default=None)
+    id: str | None = SQLModelField(default=None, primary_key=True)
     address_type: str | None = SQLModelField(default=None)
     address1: str | None = SQLModelField(default=None)
     address2: str | None = SQLModelField(default=None)
@@ -23,10 +32,24 @@ class Address(ValidatorBaseModel):
     county: str | None = SQLModelField(default=None)
     country: str | None = SQLModelField(default=None)
     standardized: str | None = SQLModelField(default=None)
-    address_parts: Dict[str, Any] | None = SQLModelField(default=None)
+    address_parts: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
     address_key: str | None = SQLModelField(default=None)
     is_mailing: bool | None = SQLModelField(default=None)
-    other_fields: Dict[str, Any] | None = SQLModelField(default=None),
+    is_residence: bool | None = SQLModelField(default=None)
+    other_fields: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
+    records: list[RecordBaseModel] = Relationship(back_populates='address_list', link_model=AddressLink)
+    created_at: datetime = SQLModelField(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+        default=None
+    )
+    updated_at: datetime = SQLModelField(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now()
+        ),
+        default=None
+    )
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -43,7 +66,7 @@ class Address(ValidatorBaseModel):
             raise ValueError("Address must be standardized before generating a hash key.")
         return RecordKeyGenerator.generate_static_key(self.standardized)
 
-    def update(self, other: Address):
+    def update(self, other: "Address"):
         if other.address1 and not self.address1:
             self.address1 = other.address1
         if other.address2 and not self.address2:
@@ -74,30 +97,3 @@ class Address(ValidatorBaseModel):
             self.other_fields.update(other.other_fields)
 
 
-# class AddressModel(Base):
-#     __abstract__ = True
-#     address_type: Mapped[str] = mapped_column(String, nullable=False)
-#     address1: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     address2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     city: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     state: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     zipcode: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     zip5: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)
-#     zip4: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
-#     county: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     country: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     standardized: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     address_parts: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-#     address_key: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-#     is_mailing: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-#     other_fields: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-#
-#     @declared_attr
-#     @abc.abstractmethod
-#     def record_id(cls):
-#         return mapped_column(Integer, ForeignKey('RecordModel.id'), nullable=True)
-#
-#     @declared_attr
-#     @abc.abstractmethod
-#     def record(cls):
-#         return relationship('RecordModel', back_populates='address_list')

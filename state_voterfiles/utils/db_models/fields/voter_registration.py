@@ -1,20 +1,45 @@
-from typing import Optional, Dict, Any, Annotated
-from datetime import date
+from typing import Dict, Any
+from datetime import date, datetime
 
-from sqlmodel import Field as SQLModelField, JSON
-from pydantic import Field as PydanticField
+from sqlmodel import Field as SQLModelField, JSON, Relationship, Column, DateTime, func
 
-from state_voterfiles.utils.funcs import RecordKeyGenerator
-from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel
+from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
+from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+# from state_voterfiles.utils.db_models.fields.elections import VoterAndElectionLink
 
 
-class VoterRegistration(ValidatorBaseModel):
+class VoterRegistration(SQLModelBase, table=True):
+    __tablename__ = 'voter_registration'
     id: str | None = SQLModelField(default=None, primary_key=True)
-    vuid: str | None = SQLModelField(default=None)
+    vuid: str | None = SQLModelField(default=None, unique=True)
     edr: date | None = SQLModelField(default=None)
     status: str | None = SQLModelField(default=None)
     county: str | None = SQLModelField(default=None)
+    precinct_number: str | None = SQLModelField(default=None)
+    precinct_name: str | None = SQLModelField(default=None)
     attributes: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
+    created_at: datetime = SQLModelField(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+        default=None
+    )
+    updated_at: datetime = SQLModelField(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now()
+        ),
+        default=None
+    )
+    # vote_history: list["VotedInElection"] = Relationship(
+    #     back_populates="voters",
+    #     link_model=VoterAndElectionLink,
+    #     sa_relationship_kwargs={
+    #         'primaryjoin': 'VoterRegistration.vuid == VoterAndElectionLink.voter_id',
+    #         'secondaryjoin': 'VoterAndElectionLink.vote_history_id == VotedInElection.id',
+    #         'overlaps': "records,voters"
+    #     }
+    # )
+    records: list["RecordBaseModel"] = Relationship(back_populates="voter_registration")
 
     def __init__(self, **data):
         super().__init__(**data)

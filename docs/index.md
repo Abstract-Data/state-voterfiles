@@ -12,20 +12,30 @@ title: State Voter File Reader & Validator
 
 ## Example
 
-```py title="main.py"
-from state_voterfiles.utils import TomlReader
-from state_voterfiles.utils import VoterFileLoader
+[//]: # (```py title="main.py")
 
-tx = VoterFileLoader(Path(__file__).parent / 'voter_files' / 'texasnovember2022.csv')
+[//]: # (from state_voterfiles.utils.readers import TomlReader)
 
-tx_validator = StateValidator(
-    file=tx,
-    validator=TexasValidator,
-    sql_model=TexasRecord,
-    load_to_sql=True)
+[//]: # (from state_voterfiles.utils.loaders.state_loader import StateVoterFile)
 
-tx_validator.validate()
-```
+[//]: # ()
+[//]: # (tx = StateVoterFile&#40;Path&#40;__file__&#41;.parent / 'voter_files' / 'texasnovember2022.csv'&#41;)
+
+[//]: # ()
+[//]: # (tx_validator = StateValidator&#40;)
+
+[//]: # (    file=tx,)
+
+[//]: # (    validator=TexasValidator,)
+
+[//]: # (    sql_model=TexasRecord,)
+
+[//]: # (    load_to_sql=True&#41;)
+
+[//]: # ()
+[//]: # (tx_validator.validate&#40;&#41;)
+
+[//]: # (```)
 
 ## Project layout
 

@@ -1,65 +1,67 @@
-# from state_tools import SetupState, StateVoterFile
+from utils.abcs.state_setup_abc import SetupStateABC
+from utils.loaders.state_loader import StateVoterFile
 
 from sqlmodel import create_engine, SQLModel, Field, Relationship, Session, UniqueConstraint
 from typing import Optional, List
 
-engine = create_engine("postgresql://postgres:password@localhost/voterfiles")
-
-
-class PoliticalParty(SQLModel, table=True):
-    __tablename__ = "test_table2"
-    id: Optional[int] = Field(default=None, primary_key=True)
-    party_name: str = Field(default="Republican")
-    party_members: List["PartyMember"] = Relationship(back_populates="party")
-
-
-class DistrictLink(SQLModel, table=True):
-    __tablename__ = "district_links"
-    member_id: Optional[int] = Field(default=None, foreign_key="test_table1.id", primary_key=True)
-    district_id: Optional[int] = Field(default=None, foreign_key="districts.id", primary_key=True)
-
-
-class District(SQLModel, table=True):
-    __tablename__ = "districts"
-    __table_args__ = (UniqueConstraint("level", "name", "number", name="unique_district"),)
-    id: Optional[int] = Field(default=None, primary_key=True)
-    level: str
-    name: str
-    number: str
-    residents: List["PartyMember"] = Relationship(back_populates="districts", link_model=DistrictLink)
-
-    def __hash__(self):
-        return hash("_".join([self.level, self.name, self.number]))
-
-
-class PartyMember(SQLModel, table=True):
-    __tablename__ = "test_table1"
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    age: int
-    party_id: Optional[int] = Field(default=None, foreign_key="test_table2.id")
-    party: Optional["PoliticalParty"] = Relationship(back_populates="party_members")
-    districts: Optional[List["District"]] = Relationship(back_populates="residents", link_model=DistrictLink)
-
-
-setattr(PartyMember, '__tablename__', "party_members")
-
-SQLModel.metadata.create_all(engine)
-
-# republicans = PoliticalParty(party_members=[])
-
-district1 = District(level="federal", name="TX-1", number="1")
-district6 = District(level="federal", name="TX-1", number="1")
-district7 = District(level="federal", name="TX-1", number="1")
-district8 = District(level="federal", name="TX-1", number="1")
-district9 = District(level="federal", name="TX-1", number="1")
-district2 = District(level="state", name="TX-1", number="1")
-district3 = District(level="city", name="Austin", number="1")
-district4 = District(level="county", name="Travis", number="1")
-district5 = District(level="city", name="Austin", number="2")
-with Session(engine) as session:
-    session.add_all([district1, district2, district3, district4, district5, district6, district7, district8, district9])
-    session.commit()
+texas = StateVoterFile('texas', city='austin')
+# engine = create_engine("postgresql://postgres:password@localhost/voterfiles")
+#
+#
+# class PoliticalParty(SQLModel, table=True):
+#     __tablename__ = "test_table2"
+#     id: Optional[int] = Field(default=None, primary_key=True)
+#     party_name: str = Field(default="Republican")
+#     party_members: List["PartyMember"] = Relationship(back_populates="party")
+#
+#
+# class DistrictLink(SQLModel, table=True):
+#     __tablename__ = "district_links"
+#     member_id: Optional[int] = Field(default=None, foreign_key="test_table1.id", primary_key=True)
+#     district_id: Optional[int] = Field(default=None, foreign_key="districts.id", primary_key=True)
+#
+#
+# class District(SQLModel, table=True):
+#     __tablename__ = "districts"
+#     __table_args__ = (UniqueConstraint("level", "name", "number", name="unique_district"),)
+#     id: Optional[int] = Field(default=None, primary_key=True)
+#     level: str
+#     name: str
+#     number: str
+#     residents: List["PartyMember"] = Relationship(back_populates="districts", link_model=DistrictLink)
+#
+#     def __hash__(self):
+#         return hash("_".join([self.level, self.name, self.number]))
+#
+#
+# class PartyMember(SQLModel, table=True):
+#     __tablename__ = "test_table1"
+#     id: Optional[int] = Field(default=None, primary_key=True)
+#     name: str
+#     age: int
+#     party_id: Optional[int] = Field(default=None, foreign_key="test_table2.id")
+#     party: Optional["PoliticalParty"] = Relationship(back_populates="party_members")
+#     districts: Optional[List["District"]] = Relationship(back_populates="residents", link_model=DistrictLink)
+#
+#
+# setattr(PartyMember, '__tablename__', "party_members")
+#
+# SQLModel.metadata.create_all(engine)
+#
+# # republicans = PoliticalParty(party_members=[])
+#
+# district1 = District(level="federal", name="TX-1", number="1")
+# district6 = District(level="federal", name="TX-1", number="1")
+# district7 = District(level="federal", name="TX-1", number="1")
+# district8 = District(level="federal", name="TX-1", number="1")
+# district9 = District(level="federal", name="TX-1", number="1")
+# district2 = District(level="state", name="TX-1", number="1")
+# district3 = District(level="city", name="Austin", number="1")
+# district4 = District(level="county", name="Travis", number="1")
+# district5 = District(level="city", name="Austin", number="2")
+# with Session(engine) as session:
+#     session.add_all([district1, district2, district3, district4, district5, district6, district7, district8, district9])
+#     session.commit()
     # session.refresh(district1)
     # session.refresh(district2)
     # session.refresh(district3)

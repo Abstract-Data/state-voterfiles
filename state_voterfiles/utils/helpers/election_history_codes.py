@@ -1,34 +1,34 @@
-from enum import Enum, StrEnum
+from enum import Enum
 
 
-class VoteMethodCodes(StrEnum):
+class VoteMethodCodes(Enum):
     IN_PERSON = "IP"
     MAIL_IN = "MI"
-    EARLY_VOTING = "EV"
+    EARLY_VOTE = "EV"
     PROVISIONAL = "PV"
     ABSENTEE = "AB"
 
 
-class PoliticalPartyCodes(StrEnum):
-    DEMOCRATIC = "Democratic"
-    REPUBLICAN = "Republican"
-    LIBERTARIAN = "Libertarian"
-    GREEN = "Green"
-    CONSTITUTION = "Constitution"
-    AMERICAN_SOLIDARITY = "American Solidarity"
-    ALLIANCE = "Alliance"
+class PoliticalPartyCodes(Enum):
+    DEMOCRATIC = "DEM"
+    REPUBLICAN = "REP"
+    LIBERTARIAN = "LIB"
+    GREEN = "GRN"
+    CONSTITUTION = "CON"
+    AMERICAN_SOLIDARITY = "ASP"
+    ALLIANCE = "ALL"
 
     # Additional parties based on various mentions and contexts:
-    INDEPENDENT = "Independent"
-    PROGRESSIVE = "Progressive"
-    CENTRIST = "Centrist"
+    INDEPENDENT = "IND"
+    PROGRESSIVE = "PRO"
+    CENTRIST = "CEN"
     MAGA = "MAGA"
-    NO_LABELS = "No Labels"
-    LABOUR = "Labour"
-    OTHER = "Other"
+    NO_LABELS = "NL"
+    LABOUR = "LAB"
+    OTHER = "OTH"
 
 
-class ElectionTypeCodes(StrEnum):
+class ElectionTypeCodes(Enum):
     GENERAL = "GE"
     GENERAL_RUNOFF = "GR"
     GOVERNMENTAL_AUTHORITY = "GA"

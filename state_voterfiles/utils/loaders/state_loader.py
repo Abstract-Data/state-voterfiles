@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import Any, Generator, Dict, Type
 from functools import partial
 from dataclasses import dataclass
@@ -6,16 +5,16 @@ from pathlib import Path
 
 from state_voterfiles.utils.readers.toml_reader import TomlReader
 from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
-from state_voterfiles.utils.db_models.record import RecordBaseModel
 from state_voterfiles.utils.abcs.file_loader_abc import (
     FileTypeConfigsABC,
     FileLoaderABC,
     VOTERFILE_FIELD_FOLDER,
     VOTERFILE_RECORD_FOLDER,
-    CreateValidator,
-    CSVExport,
 )
+from state_voterfiles.utils.db_models.record import RecordBaseModel
+from state_voterfiles.utils.funcs.csv_export import CSVExport
 from state_voterfiles.utils.abcs.state_setup_abc import SetupStateABC
+from state_voterfiles.utils.new_create_validator import CreateValidator
 
 
 class SetupState(SetupStateABC):
@@ -30,8 +29,9 @@ class StateVoterFileConfigs(FileTypeConfigsABC):
     pass
 
 
-class VoterFileRecord(RecordBaseModel):
-    pass
+# class VoterFileRecord(RecordBaseModel):
+#     # TODO: Modify this so that I can use RecordModel and just change the table name instead of inheriting from RecordBaseModel
+#     pass
 
 
 @dataclass
@@ -82,9 +82,10 @@ class StateVoterFile(FileLoaderABC):
         return f"{self.state.title()} Voter File"
 
     def __post_init__(self):
+        RecordBaseModel.__tablename__ = "voterfile"
         self.validation = CreateValidator(
             state_name=(self.state, 'voterfiles'),
-            record_validator=VoterFileRecord,
+            record_validator=RecordBaseModel,
             renaming_validator=self.config.renaming_model
         )
 

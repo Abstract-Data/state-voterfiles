@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Tuple, Optional, Annotated, Self, Set
+from typing import Dict, List, Tuple, Optional
 
 import phonenumbers
 
@@ -7,7 +7,6 @@ from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 import state_voterfiles.utils.validation.default_helpers as helpers
 import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumber
 
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-from typing import Self
 from datetime import datetime, date
 
 from pydantic_core import PydanticCustomError

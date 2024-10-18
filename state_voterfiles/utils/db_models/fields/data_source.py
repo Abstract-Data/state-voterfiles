@@ -1,19 +1,34 @@
-from typing import Annotated, Optional
 from datetime import date
 
-from pydantic import Field as PydanticField
-from sqlmodel import Field as SQLModelField
+from sqlmodel import Field as SQLModelField, Relationship
+from sqlalchemy import func
 
-from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel
+from state_voterfiles.utils.db_models.model_bases import SQLModelBase
 
 
-class DataSource(ValidatorBaseModel):
-    file: str = SQLModelField(..., description="Name of the file")
-    processed_date: date | None = SQLModelField(default=None, description="Date the file was processed")
+class DataSourceLink(SQLModelBase, table=True):
+    data_source_id: str | None = SQLModelField(
+        default=None,
+        foreign_key="datasource.file",
+        primary_key=True)
+    record_id: int | None = SQLModelField(
+        default=None,
+        foreign_key=f'recordbasemodel.id',
+        primary_key=True)
+
+
+class DataSource(SQLModelBase, table=True):
+    file: str = SQLModelField(..., description="Name of the file", primary_key=True)
+    processed_date: date | None = SQLModelField(default=None,
+                                                description="Date the file was processed",
+                                                sa_column_kwargs={"server_default": func.current_date()}
+                                                )
+    records: list['RecordBaseModel'] = Relationship(
+        back_populates='data_source',
+        link_model=DataSourceLink)
 
     def __hash__(self):
         return hash(self.file)
-
 
 # class DataSourceModel(Base):
 #     __abstract__ = True

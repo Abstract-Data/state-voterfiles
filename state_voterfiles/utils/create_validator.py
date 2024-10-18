@@ -16,17 +16,17 @@ from tqdm import tqdm
 
 # from state_voterfiles.utils.logger import Logger
 # from .db_models.categories.election_list import FileElectionList
-from .pydantic_models.rename_model import RecordRenamer
-from .pydantic_models.config import ValidatorConfig
 from .pydantic_models.cleanup_model import (
     PreValidationCleanUp,
-    RecordBaseModel,
     Address,
     District,
     ElectionTypeDetails,
     VendorName,
-    VotedInElection
+    VotedInElection,
+    RecordRenamer,
+    ValidatorConfig
 )
+from .db_models.record import RecordBaseModel
 # from .db_models.fields import District, Address, VendorName, ElectionTypeDetails
 
 # Define type aliases for readability

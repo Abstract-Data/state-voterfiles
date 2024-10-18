@@ -1,60 +1,71 @@
-from __future__ import annotations
-import abc
-from enum import Enum as PyEnum
-from typing import Optional, Annotated, List, Set
-from datetime import date
+from typing import Optional
+from datetime import date, datetime
+
+from pydantic.dataclasses import dataclass as pydantic_dataclass
+from sqlmodel import Field as SQLModelField, JSON, Relationship, UniqueConstraint, Column, DateTime, func
 from sqlalchemy import Enum as SA_Enum
 
-from pydantic import Field as PydanticField
-from sqlmodel import Field as SQLModelField
-
-from state_voterfiles.utils.funcs import RecordKeyGenerator
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-from state_voterfiles.utils.validation.election_history_codes import VoteMethodCodes
-
-
-class ElectionType(PyEnum):
-    GE = 'GE'
-    PE = 'PE'
-    ME = 'ME'
-    SE = 'SE'
-    RE = 'RE'
-    PR = 'PR'
-    OP = 'OP'
-    CP = 'CP'
-    NP = 'NP'
-    SB = 'SB'
-    JE = 'JE'
-    LE = 'LE'
-    CE = 'CE'
-    RF = 'RF'
-    PP = 'PP'
-    PPR = 'PPR'
-    PC = 'PC'
+from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+from state_voterfiles.utils.helpers.election_history_codes import (
+    VoteMethodCodes,
+    ElectionTypeCodes,
+    PoliticalPartyCodes
+)
 
 
-class VoteMethod(PyEnum):
-    IP = 'IP'
-    MI = 'MI'
-    EV = 'EV'
-    PV = 'PV'
-    AB = 'AB'
+@pydantic_dataclass
+class ElectionDataTuple:
+    election: "ElectionTypeDetails"
+    vote_method: "ElectionVoteMethod"
+    vote_record: "ElectionVote"
 
 
 # Use SQLAlchemy's Enum to create a database column type from the Python Enum
-ElectionTypeDB = SA_Enum(ElectionType, name='election_types', native_enum=False)
-VoteMethodDB = SA_Enum(VoteMethod, name='vote_methods', native_enum=False)
+ElectionTypeDB = SA_Enum(ElectionTypeCodes, name='election_types', native_enum=False)
+VoteMethodDB = SA_Enum(VoteMethodCodes, name='vote_methods', native_enum=False)
+PolitcalPartyDB = SA_Enum(PoliticalPartyCodes, name='political_parties', native_enum=False)
 
 
-class ElectionTypeDetails(ValidatorConfig):
-    id: str =  SQLModelField(default_factory=lambda: '')
+# TODO: Create an Election and Vote Type Table, then create a vote_type link table that links the election and vote_type to the record
+
+# class ElectionAndVoteMethodLink(SQLModelBase, table=True):
+#     election_id: Optional[str] = SQLModelField(foreign_key="electiontypedetails.id", primary_key=True)
+#     vote_method_id: Optional[str] = SQLModelField(foreign_key="electionvotemethod.id", primary_key=True)
+
+
+# class ElectionAndVoterLink(SQLModelBase, table=True):
+#     record_voter_id: str = SQLModelField(foreign_key="recordbasemodel.voter_registration_id", primary_key=True)
+#     election_vote_id: int = SQLModelField(foreign_key="electionvote.id", primary_key=True)
+
+
+class ElectionTypeDetails(SQLModelBase, table=True):
+    id: str = SQLModelField(default_factory=lambda: '', primary_key=True)
     year: int = SQLModelField(...)
-    election_type: str = SQLModelField(...)
+    election_type: ElectionTypeCodes = SQLModelField(sa_column=ElectionTypeDB)
     state: str = SQLModelField(...)
-    city: str | None = SQLModelField(default=None)
-    county: str | None = SQLModelField(default=None)
-    dates: set[date] | None = SQLModelField(default=None)
-    desc: str | None = SQLModelField(default=None)
+    city: str | None = SQLModelField(default=None, nullable=True)
+    county: str | None = SQLModelField(default=None, nullable=True)
+    dates: set[date] | None = SQLModelField(default=None, sa_type=JSON)
+    desc: str | None = SQLModelField(default=None, nullable=True)
+    created_at: datetime = SQLModelField(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+        default=None
+    )
+    updated_at: datetime = SQLModelField(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now()
+        ),
+        default=None
+    )
+    election_vote_methods: list["ElectionVoteMethod"] = Relationship(
+        back_populates="vote_method_election",
+        # link_model=ElectionAndVoteMethodLink
+    )
+    election_voters: list["ElectionVote"] = Relationship(
+        back_populates="election"
+    )
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -75,16 +86,16 @@ class ElectionTypeDetails(ValidatorConfig):
             key_string += f"-{self.city}"
         if self.county:
             key_string += f"-{self.county}"
-        key_string += f"-{self.year}-{self.election_type}"
+        key_string += f"-{self.year}-{self.election_type.value}"
         # if self.dates:
         #     key_string += f"_{'_'.join(sorted(d.isoformat() for d in self.dates))}"
 
         # # Generate a SHA256 hash of the key string
         # self.id = RecordKeyGenerator.generate_static_key(key_string)  # Using first 16 characters for brevity
-        self.id = key_string
+        self.id = key_string.replace(" ", "")
         return self.id
 
-    def update(self, other: ElectionTypeDetails):
+    def update(self, other: 'ElectionTypeDetails'):
         if other.city and not self.city:
             self.city = other.city
         if other.county and not self.county:
@@ -93,21 +104,44 @@ class ElectionTypeDetails(ValidatorConfig):
             self.dates = other.dates
         if other.desc and not self.desc:
             self.desc = other.desc
+        for _method in self.vote_methods:
+            for other_method in other.vote_methods:
+                if _method.vote_method == other_method.vote_method:
+                    _method.votes.extend(other_method.votes)
+                    break
+                else:
+                    self.vote_methods.append(other_method)
+
+    def add_voter_or_update(self, vote_entry: "VotedInElection"):
+        for voter in self.voters:
+            if voter.id == vote_entry.id:
+                return
+        self.voters.append(vote_entry)
 
 
-class VotedInElection(ValidatorConfig):
-    id: str | None = SQLModelField(default=None)
-    # year: Annotated[int, PydanticField(...)]
-    party: str | None = SQLModelField(default=None)
-    vote_date: date | None = SQLModelField(default=None)
-    vote_method: VoteMethodCodes | None = SQLModelField(default=None)
-    # election_id: Annotated[Optional[str], PydanticField(default=None)]
-    voter: VoterRegistration | None = SQLModelField(default=None)
-    # record_id: Annotated[Optional[int], PydanticField(default=None)]
-    # record: Annotated[Optional['RecordBaseModel'], PydanticField(default=None)]
-    election_id: str = SQLModelField(...)
-    election: ElectionTypeDetails = SQLModelField(...)
-
+class ElectionVoteMethod(SQLModelBase, table=True):
+    id: str = SQLModelField(primary_key=True)
+    party: Optional[PoliticalPartyCodes] = SQLModelField(default=None, sa_column=PolitcalPartyDB)
+    vote_date: Optional[date] = SQLModelField(default=None, nullable=True)
+    vote_method: VoteMethodCodes = SQLModelField(sa_column=VoteMethodDB)
+    election_id: str = SQLModelField(foreign_key="electiontypedetails.id", unique=False)
+    created_at: datetime = SQLModelField(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+        default=None
+    )
+    updated_at: datetime = SQLModelField(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now()
+        ),
+        default=None
+    )
+    vote_method_votes: list["ElectionVote"] = Relationship(back_populates="vote_method")
+    vote_method_election: list[ElectionTypeDetails] = Relationship(
+        back_populates="election_vote_methods",
+        # link_model=ElectionAndVoteMethodLink
+    )
     def __init__(self, **data):
         super().__init__(**data)
         self.id = self.generate_hash_key()
@@ -117,14 +151,45 @@ class VotedInElection(ValidatorConfig):
 
     def generate_hash_key(self) -> str:
         key_string: str = f"{self.election_id}"
-        if self.party:
-            key_string += f"-{self.party}"
         if self.vote_method:
-            key_string += f"-{self.vote_method}"
+            key_string += f"-{self.vote_method.value}"
         if self.vote_date:
             key_string += f"-{self.vote_date:  %Y%m%d}"
+        if self.party:
+            key_string += f"-{self.party.value}"
 
         return key_string
+
+
+class ElectionVote(SQLModelBase, table=True):
+    # id: Optional[int] = SQLModelField(primary_key=True)
+    __table_args__ = (UniqueConstraint('voter_id', 'election_id', 'vote_method_id'),)
+    voter_id: Optional[str] = SQLModelField(foreign_key="recordbasemodel.voter_registration_id", primary_key=True)
+    election_id: str = SQLModelField(foreign_key="electiontypedetails.id", primary_key=True)
+    vote_method_id: str = SQLModelField(foreign_key="electionvotemethod.id", primary_key=True)
+    created_at: datetime = SQLModelField(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+        default=None
+    )
+    updated_at: datetime = SQLModelField(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            server_onupdate=func.now()
+        ),
+        default=None
+    )
+    election: ElectionTypeDetails = Relationship(back_populates="election_voters")
+    vote_method: ElectionVoteMethod = Relationship(back_populates="vote_method_votes")
+    record: "RecordBaseModel" = Relationship(
+        back_populates="vote_history",
+        # link_model=ElectionAndVoterLink,
+        # sa_relationship_kwargs={
+        #     'primaryjoin': 'ElectionVote.id == ElectionAndVoterLink.election_vote_id',
+        #     'secondaryjoin': 'ElectionAndVoterLink.record_voter_id == RecordBaseModel.voter_registration_id'
+        # }
+    )
 
 # class ElectionTypeModel(Base):
 #     __abstract__ = True

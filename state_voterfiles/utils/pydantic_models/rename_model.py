@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 import abc
+from pathlib import Path
+from typing import Optional, Dict, Annotated, Type, Any, List, Union
 
 from pydantic import (
     Field,
@@ -8,11 +8,10 @@ from pydantic import (
     AliasChoices,
     create_model,
 )
-from typing import Optional, Dict, Annotated, Type, Any, List, Union
+
 import state_voterfiles.utils.validation.default_funcs as funcs
 from state_voterfiles.utils.readers.toml_reader import TomlReader
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-from pathlib import Path
 from state_voterfiles.utils.abcs.toml_record_fields_abc import (
     TomlFileFieldsABC
 )

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 from state_voterfiles.utils.validation.texas_elections import TexasElectionHistoryValidator

@@ -1,5 +1,4 @@
-from __future__ import annotations
-from typing import Type, Set
+from typing import Type, List
 from datetime import datetime
 import re
 
@@ -8,15 +7,14 @@ from pydantic import Field as PydanticField
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from icecream import ic
 
-from state_voterfiles.utils.db_models.fields.elections import VotedInElection, ElectionTypeDetails
-from state_voterfiles.utils.helpers.election_history_codes import (
+import state_voterfiles.utils.validation.default_funcs as vfuncs
+from ..db_models.fields.elections import ElectionVoteMethod, ElectionTypeDetails, ElectionVote, ElectionDataTuple
+from ..helpers.election_history_codes import (
     VoteMethodCodes,
     ElectionTypeCodes,
     PoliticalPartyCodes
 )
-import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-
+from ..pydantic_models.config import ValidatorConfig
 
 
 @pydantic_dataclass
@@ -29,7 +27,6 @@ class TexasElectionHistoryValidator:
         voting_methods = lists.get("vote_methods", None)
 
         elections = {k: v for k, v in self.data.raw_data.items() if k.startswith(('PRI', 'GEN'))}
-        election_detailed_list = set()
         election_list = []
         for e, v in elections.items():
             _d = {}
@@ -60,7 +57,7 @@ class TexasElectionHistoryValidator:
                     )
 
                 if v.endswith('E'):
-                    _d['vote_method'] = VoteMethodCodes.EARLY_VOTING
+                    _d['vote_method'] = VoteMethodCodes.EARLY_VOTE
                 elif v.endswith('A'):
                     _d['vote_method'] = VoteMethodCodes.ABSENTEE
                 elif v.endswith(('V', 'D', ''R'')):
@@ -70,13 +67,19 @@ class TexasElectionHistoryValidator:
 
                 _d['state'] = 'TX'
                 e_details = ElectionTypeDetails(**_d)
-                _d['election'] = e_details
-                _d['election_id'] = e_details.id
-                e_validator = VotedInElection(**_d)
-                election_detailed_list.add(e_details)
-                election_list.append(e_validator)
-        # self.elections = sorted(election_detailed_list, key=lambda x: x.year)
-        self.vote_history = election_list
+                e_vote_method = ElectionVoteMethod(election_id=e_details.id, **_d)
+                e_voter_record = ElectionVote(
+                    election_id=e_details.id,
+                    vote_method_id=e_vote_method.id,
+                )
+                election_list.append(
+                    ElectionDataTuple(
+                        election=e_details,
+                        vote_method=e_vote_method,
+                        vote_record=e_voter_record
+                    )
+                )
+        self.elections = election_list
         return self
 
     @staticmethod
@@ -154,7 +157,7 @@ class TexasElectionHistoryValidator:
                 vote_obj = VotedInElection(**info)
                 election_list.append(vote_obj)
         # self.elections = sorted(election_detailed_list, key=lambda x: x.vote_date)
-        self.vote_history = sorted(election_list, key=lambda x: x.vote_date)
+        self.votes = sorted(election_list, key=lambda x: x.vote_date)
         # self.collected_elections = election_detailed_list
         return self
 

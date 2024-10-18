@@ -1,10 +1,12 @@
 from enum import StrEnum
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
+
 class CityDistrictCodes(StrEnum):
     COUNCIL_DISTRICT: str = "city council"
     MUNICIPALITY: str = "municipality"
     SCHOOL_BOARD: str = "school board"
+
 
 class CountyDistrictCodes(StrEnum):
     COMMISSIONER: str = "commissioner"
@@ -14,6 +16,7 @@ class CountyDistrictCodes(StrEnum):
     WATER_DISTRICT: str = "water district"
     MASS_TRANSIT_AUTHORITY: str = "mass transit authority"
     COMMUNITY_COLLEGE: str = "community college"
+
 
 class StateDistrictCodes(StrEnum):
     LEGISLATIVE_LOWER: str = "legislative lower"
@@ -30,15 +33,18 @@ class StateCourtCodes(StrEnum):
     CRIMINAL_APPEALS: str = "criminal appeals"
     COURT_OF_APPEALS: str = "court of appeals"
 
+
 class DistrictCourtCodes(StrEnum):
     CIVIL: str = "civil district court"
     CRIMINAL: str = "criminal district court"
     FAMILY: str = "family district court"
 
+
 class CountyCourtCodes(StrEnum):
     CONSTITUTIONAL: str = "constitutional court"
     PROBATE: str = "statutory probate court"
     JUSTICE_OF_THE_PEACE: str = "justice of the peace"
+
 
 class MuncipalCourtCodes(StrEnum):
     TRAFFIC: str = "traffic court"

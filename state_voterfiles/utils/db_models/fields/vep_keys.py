@@ -1,12 +1,11 @@
-from typing import Optional, Annotated
+from sqlmodel import Field as SQLModelField, Relationship
 
-from sqlmodel import Field as SQLModelField
-from pydantic import Field as PydanticField
-
-from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel
+from state_voterfiles.utils.db_models.model_bases import SQLModelBase
 
 
-class VEPMatch(ValidatorBaseModel):
+class VEPMatch(SQLModelBase, table=True):
+    __tablename__ = 'vep_match'
+    id: int | None = SQLModelField(default=None, primary_key=True)
     uuid: str | None = SQLModelField(default=None)
     long: str | None = SQLModelField(default=None)
     short: str | None = SQLModelField(default=None)
@@ -17,7 +16,7 @@ class VEPMatch(ValidatorBaseModel):
     full_key_hash: str | None = SQLModelField(default=None)
     best_key: str | None = SQLModelField(default=None)
     uses_mailzip: bool | None = SQLModelField(default=None)
-
+    records: 'RecordBaseModel' = Relationship(back_populates='vep_keys')
 
 # class VEPKeysModel(Base):
 #     __abstract__ = True

@@ -1,42 +1,43 @@
-from __future__ import annotations
 from typing import Any, Dict, List, Tuple, Optional, Annotated, Set, Iterable, Type
 from datetime import datetime
+from enum import StrEnum
 
 # import logfire
 from icecream import ic
 from rapidfuzz import fuzz
 
-from pydantic import model_validator, Field as PydanticField
+from pydantic import model_validator
 from pydantic_core import PydanticCustomError
-from sqlmodel import Field as SQLModelField, Relationship as SQLModelRelationship, JSON
 
-from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
 import state_voterfiles.utils.validation.default_funcs as vfuncs
-
-
-from state_voterfiles.utils.db_models.record import (
-    RecordBaseModel,
-    PersonName,
-    Address,
-    VoterRegistration,
-    VendorTags,
-    ValidatedPhoneNumber,
-    InputData,
-    DataSource,
-    District
-)
-from ..db_models.fields.elections import ElectionTypeDetails, VotedInElection
-from ..db_models.fields.vendor import VendorName
-from ..db_models.categories.district_list import FileDistrictList
-from ..db_models.categories.address_list import FileAddressList
-from ..pydantic_models.config import ValidatorConfig
-
+# from ..db_models.record import RecordBaseModel
+# from ..pydantic_models.rename_model import RecordRenamer
+from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
+from state_voterfiles.utils.db_models.validator_record import *
+from state_voterfiles.utils.db_models.fields.district import District, DistrictSetLink
+# from ..db_models.fields.address import AddressLink
+# from ..db_models.fields.vendor import VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
+# from ..db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
+from ..db_models.fields.elections import ElectionVote
+# from ..db_models.fields.vep_keys import VEPMatch
+# from ..db_models.fields.data_source import DataSourceLink
+# from ..db_models.fields.district import DistrictLink, DistrictLinkToRecord
+# from ..db_models.categories.district_list import FileDistrictList
 from state_voterfiles.utils.helpers.district_codes import DistrictCodes
-from state_voterfiles.utils.funcs.validation.address import AddressValidationFuncs, AddressTypeList
+from state_voterfiles.utils.funcs.validation.address import (
+    AddressValidationFuncs,
+    AddressTypeList,
+    AddressType
+)
 from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationFuncs
 from state_voterfiles.utils.funcs.validation.vep_keys import VEPKeyMaker
 from state_voterfiles.utils.funcs.validation.dates import DateValidators
 from state_voterfiles.utils.funcs.validation.election_history import ElectionValidationFuncs
+# from ..db_models.record import RecordBaseModel
+# from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationFuncs
+# from state_voterfiles.utils.funcs.validation.vep_keys import VEPKeyMaker
+# from state_voterfiles.utils.funcs.validation.dates import DateValidators
+# from state_voterfiles.utils.funcs.validation.election_history import ElectionValidationFuncs
 ic.enable()
 ic.configureOutput(prefix='PreValidationCleanUp| ', includeContext=True)
 
@@ -87,7 +88,7 @@ def check_if_fields_exist(self):
                     'method_name': 'set_validator_types'
                 }
             )
-    if not any([x for x in self.address_list if x.address_type in AddressTypeList]):
+    if not any([x.address_type for x in self.address_list if x.address_type in AddressTypeList]):
         raise PydanticCustomError(
             'missing_address',
             'Missing address information. Unable to generate VEP keys',
@@ -154,24 +155,8 @@ def check_if_fields_exist(self):
 # TODO: With the district combinations, figure out a way to check if there's some districts, but not others already
 #  in the database, if so, go ahead and expand the comination into the record.
 #  May not need to do that though if it's just generating a list of districts and creating combinations accordingly.
-class PreValidationCleanUp(RecordBaseModel):
-    data: RecordRenamer = SQLModelField(...)
-    person_details: Dict[str, Any] | None= SQLModelField(default_factory=dict, sa_type=JSON)
-    input_voter_registration: Dict[str, Any] | None = SQLModelField(default_factory=dict, sa_type=JSON)
-    district_set: FileDistrictList | None = SQLModelField(default_factory=FileDistrictList)
-    district_set_id: str | None = SQLModelField(default=None)
-    phone: list[ValidatedPhoneNumber] | None = SQLModelField(default_factory=list, sa_type=JSON)
-    # mailing_id: Annotated[Optional[str], Field(default=None)]
-    # residential_id: Annotated[Optional[str], Field(default=None)]
-    address_list: set[Address] = SQLModelField(default_factory=set, sa_type=JSON)
-    date_format: Any = SQLModelField(default=None, sa_type=JSON)
-    settings: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
-    raw_data: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
-    vendor_names: list[VendorName] = SQLModelField(default_factory=set, sa_type=JSON)
-    vendor_tags: list[VendorTags] = SQLModelField(default_factory=list, sa_type=JSON)
-    # elections: Annotated[List[ElectionTypeDetails], Field(default_factory=list)]
-    vote_history: list[VotedInElection] = SQLModelField(default_factory=list, sa_type=JSON)
-    corrected_errors: dict[str, Any] = SQLModelField(default_factory=dict, sa_type=JSON)
+class PreValidationCleanUp(CleanUpBaseModel):
+    name_id: Optional[int] = SQLModelField(default=None)
 
     def _filter(self, start: str):
         result = vfuncs.getattr_with_prefix(start, obj=self.data)
@@ -222,7 +207,9 @@ class PreValidationCleanUp(RecordBaseModel):
         d = {
             'vuid': _reg_details.pop('vuid', None),
             'edr': _reg_details.pop('registration_date', None),
-            'status': _reg_details.pop('status', None),
+            'status': next((_reg_details[item] for item in _reg_details if item.endswith('status')), None),
+            'precinct_number': next((_reg_details[item] for item in _reg_details if item.endswith('precinct_number')), None),
+            'precinct_name': next((_reg_details[item] for item in _reg_details if item.endswith('precinct_name')), None),
             'county': _reg_details.pop('county', None),
         }
         attributes = {
@@ -232,7 +219,7 @@ class PreValidationCleanUp(RecordBaseModel):
             match k:
                 case 'profile':
                     attributes['political_tags'].update({k.removeprefix('profile_').strip(): v})
-                case _:
+                case _ if k not in d:
                     attributes[k] = v
         if attributes:
             d.update({'attributes': attributes})
@@ -241,8 +228,9 @@ class PreValidationCleanUp(RecordBaseModel):
 
     @model_validator(mode='after')
     def validate_addresses(self):
+        _address_list = set()
+        address_count = 0
         for address_type in AddressTypeList:
-            address_count = 0
             while True:
                 _func = AddressValidationFuncs
                 prefix = f"{address_type}_{address_count}_" if address_count > 0 else f"{address_type}_"
@@ -267,13 +255,28 @@ class PreValidationCleanUp(RecordBaseModel):
                     d.setdefault('other_fields', {}).update(other_fields)
                 d['address_type'] = address_type
                 _address = Address(**d)
-                # if address_type == 'mail':
-                #     self.mailing_id = _address.id
-                # elif address_type == 'residential':
-                #     self.residential_id = _address.id
-                self.address_list.add(_address)
+                if address_type == 'mail':
+                    _address.is_mailing = True
+                elif address_type == 'residential':
+                    _address.is_residence = True
+                _address_list.add(_address)
                 address_count += 1  # Increment to check for additional addresses
-
+        if address_count == 2 and len(_address_list) == 1:
+            _single_address = _address_list.pop()
+            _single_address.is_residence = True
+            _single_address.is_mailing = True
+            _address_list.add(_single_address)
+        elif address_count == 2 and len(_address_list) == 2:
+            _mailing_address = next((x for x in _address_list if x.is_mailing), None)
+            _mailing_address.is_mailing = True
+            _residence_address = next((x for x in _address_list if x.is_residence), None)
+            _residence_address.is_residence = True
+        else:
+            _single_address = next(iter(_address_list), None)
+            if _single_address:
+                _single_address.is_residence = True if _single_address.address_type == AddressType.RESIDENCE else None
+                _single_address.is_mailing = True if _single_address.address_type == AddressType.MAIL else None
+        self.address_list = _address_list
         return self
 
     validate_edr = model_validator(mode='after')(DateValidators.validate_date_edr)
@@ -291,7 +294,20 @@ class PreValidationCleanUp(RecordBaseModel):
     @model_validator(mode='after')
     def validate_voter_registration(self):
         if self.input_voter_registration:
-            self.voter_registration = VoterRegistration(**self.input_voter_registration)
+            status = None
+            status_key = next((k for k in self.input_voter_registration.keys() if k.endswith('status')), None)
+            # precinct_number_key = next((k for k in self.input_voter_registration.keys() if k.endswith('precinct_number')), None)
+            # precinct_name_key = next((k for k in self.input_voter_registration.keys() if k.endswith('precinct_name')), None)
+            if status_key:
+                status = self.input_voter_registration.pop(status_key)
+            # if precinct_number_key:
+            #     precinct_number = self.input_voter_registration.pop(precinct_number_key)
+            # if precinct_name_key:
+            #     precinct_name = self.input_voter_registration.pop(precinct_name_key)
+            self.voter_registration = VoterRegistration(
+                **self.input_voter_registration,
+                status=status,
+            )
         return self
 
     @model_validator(mode='after')
@@ -310,7 +326,7 @@ class PreValidationCleanUp(RecordBaseModel):
         if new_vendor_dict:
             for k, v in new_vendor_dict.items():
                 vendor_obj = VendorName(name=k)
-                self.vendor_names.append(vendor_obj)
+                self.vendor_names.add(vendor_obj)
                 if v:
                     for _k, _v in v.items():
                         try:
@@ -318,7 +334,7 @@ class PreValidationCleanUp(RecordBaseModel):
                         except:
                             pass
                         v[_k] = _v
-                    vendors_to_return.append(VendorTags(vendor_id=vendor_obj.id, tags=v))
+                    vendors_to_return.append(VendorTags(tags=v))
             self.vendor_tags = vendors_to_return
         return self
 
@@ -413,7 +429,7 @@ class PreValidationCleanUp(RecordBaseModel):
                 for district in all_districts:
                     self.district_set.add_or_update(district)
                 self.district_set.generate_hash_key()
-                self.district_set_id = self.district_set.id
+                # self.district_set_id = self.district_set.id
                 self.corrected_errors.update(
                     {f'{k}_districts': 'Parsed district information' for k, v in districts.items() if v}
                 )
@@ -423,11 +439,12 @@ class PreValidationCleanUp(RecordBaseModel):
 
     @model_validator(mode='after')
     def set_vuid_in_vote_history(self):
-        if self.vote_history:
-            for v in self.vote_history:
-                v.voter = self.voter_registration
+        if self.elections:
+            for election in self.elections:
+                election.vote_record.voter_id = self.voter_registration.vuid
                 # v.id = v.generate_hash_key()
         return self
+
     @model_validator(mode='after')
     def set_validator_types(self):
         AddressValidationFuncs.process_addresses(self)
@@ -449,5 +466,79 @@ class PreValidationCleanUp(RecordBaseModel):
     @model_validator(mode='after')
     def set_file_origin(self):
         if _file_origin := self.input_data.original_data.get('file_origin'):
-            self.data_sources.append(DataSource(file=_file_origin))
+            self.data_source = DataSource(file=_file_origin)
         return self
+
+    # @staticmethod
+    # def create_relationships_on_cleanup(record_model: Type[SQLModel]):
+    #
+    #     AddressLink.address_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f"{Address.__tablename__}.id",
+    #         primary_key=True)
+    #     AddressLink.record_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f'f{record_model.__tablename__}.id',
+    #         primary_key=True)
+    #     Address.records = Relationship(
+    #         back_populates='address_list',
+    #         link_model=AddressLink)
+    #
+    #     PhoneLink.record_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f'{record_model.__tablename__}.id',
+    #         primary_key=True)
+    #
+    #     ValidatedPhoneNumber.records = Relationship(
+    #         back_populates='phone',
+    #         link_model=PhoneLink)
+    #
+    #     VendorTags.vendors = Relationship(back_populates="tags", link_model=VendorTagsToVendorLink)
+    #     VendorName.tags = Relationship(back_populates="vendors", link_model=VendorTagsToVendorLink)
+    #
+    #     VendorTagsToVendorToRecordLink.record_id = SQLModelField(default=None, foreign_key="record_base.id", primary_key=True)
+    #     VendorTagsToVendorToRecordLink.record = Relationship(back_populates='vendor_tag_record_links')
+    #
+    #     # # Relationships from elections.py
+    #     ElectionLinkToRecord.record_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f'{record_model.__tablename__}.id',
+    #         primary_key=True)
+    #     ElectionLinkToRecord.record = Relationship(back_populates="election_link_records")
+    #
+    #     # Relationships from data_source.py
+    #     DataSource.records = Relationship(
+    #         back_populates='data_source',
+    #         link_model=DataSourceLink)
+    #
+    #     DataSourceLink.record_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f'{record_model.__tablename__}.id',
+    #         primary_key=True)
+    #
+    #     # Relationships from district.py
+    #     DistrictLink.record_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f"{record_model.__tablename__}.id",
+    #         primary_key=True)
+    #     DistrictLinkToRecord.record_id = SQLModelField(
+    #         default=None,
+    #         foreign_key=f"{record_model.__tablename__}.id",
+    #         primary_key=True)
+    #     DistrictLinkToRecord.record = Relationship(back_populates="district_link_records")
+    #     configure_mappers()
+    #     return record_model
+
+    # @model_validator(mode='after')
+    # def set_foreign_ids(self):
+    #     if self.data_source:
+    #         self.data_source_id = self.data_source.id
+    #     if self.input_data:
+    #         self.input_data_id = self.input_data.id
+    #     if self.name:
+    #         self.name_id = self.name.id
+    #     if self.voter_registration:
+    #         self.voter_registration_id = self.voter_registration.id
+    #     if self.district_set:
+    #         self.district_set_id = self.district_set.id
+    #     return self

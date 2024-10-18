@@ -1,24 +1,21 @@
 from __future__ import annotations
-from typing import Any, Generator, Dict, Annotated, Optional, Callable, Iterable, ClassVar
+from typing import Any, Generator, Dict, Optional, Iterable, ClassVar
 import abc
-from functools import partial, wraps, cached_property
+from functools import wraps, cached_property
 import contextlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import field, dataclass
 
 from tqdm import tqdm
-from pydantic.dataclasses import dataclass as pydantic_dataclass
-from pydantic import BaseModel, Field as PydanticField, DirectoryPath, FilePath, ConfigDict
+from pydantic import FilePath
 # import logfire
 
-
-from state_voterfiles.utils.new_create_validator import CreateValidator
+from state_voterfiles.utils.pydantic_models.rename_model import create_renamed_model
+from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
+from state_voterfiles.utils.abcs.create_validator_abc import CreateValidatorABC
 from state_voterfiles.utils.readers.csv_reader import read_csv
 from state_voterfiles.utils.readers.toml_reader import TomlReader
-from state_voterfiles.utils.funcs import CSVExport
-from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
-from state_voterfiles.utils.pydantic_models.rename_model import create_renamed_model
 # from state_voterfiles.utils.logger import Logger
 
 # logfire.configure()
@@ -197,12 +194,12 @@ class FileLoaderABC(abc.ABC):
     data: Any = None
     fields: TomlReader = None
     # context_managers: list = field(default_factory=list)
-    validation: CreateValidator = None
+    validation: CreateValidatorABC = None
     _newest_file: FilePath = None
     _read_all_files: bool = False
 
     @abc.abstractmethod
-    def __init__(self):
+    def __post_init__(self):
         self.config = ...
         self.validation = ...
 
@@ -227,7 +224,7 @@ class FileLoaderABC(abc.ABC):
         """Returns a logger instance with the module name set to 'StateFileFunctions'."""
         return None
 
-    def validate(self, records: Iterable[Dict[str, Any]] = None, **kwargs) -> CreateValidator:
+    def validate(self, records: Iterable[Dict[str, Any]] = None, **kwargs) -> CreateValidatorABC:
         """Validates the voter file records and returns the validation instance."""
         # self.context_managers.append(
         #     logfire.span(f"Validating {self.__class__.__name__} records for {self.state.title()}"))

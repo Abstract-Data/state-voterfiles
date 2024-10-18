@@ -3,10 +3,9 @@ from __future__ import annotations
 from pydantic_core import PydanticCustomError
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
+import state_voterfiles.utils.validation.default_funcs as vfuncs
 from state_voterfiles.utils.funcs.validation.address import AddressType, AddressTypeList
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
-import state_voterfiles.utils.validation.default_helpers as helpers
-import state_voterfiles.utils.validation.default_funcs as vfuncs
 from state_voterfiles.utils.db_models.fields.vep_keys import VEPMatch
 
 

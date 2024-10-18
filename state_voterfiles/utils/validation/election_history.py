@@ -1,24 +1,23 @@
-from __future__ import annotations
 from typing import Type
 from datetime import datetime
-from state_voterfiles.utils.db_models.fields.elections import VotedInElection
-from state_voterfiles.utils.validation.election_history_codes import (
-    VoteMethodCodes, ElectionTypeCodes, PoliticalPartyCodes
-)
-import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
+
 from pydantic_core import PydanticCustomError
 from pydantic.dataclasses import dataclass as pydantic_dataclass
+
+import state_voterfiles.utils.validation.default_funcs as vfuncs
+from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
+import state_voterfiles.utils.db_models.fields.elections as election_fields
+from state_voterfiles.utils.helpers.election_history_codes import (
+    VoteMethodCodes,
+    ElectionTypeCodes,
+    PoliticalPartyCodes
+)
 
 
 @pydantic_dataclass
 class StateElectionHistoryValidator:
     @staticmethod
     def TEXAS(self) -> Type[ValidatorConfig]:
-        election_settings = vfuncs.getattr_with_prefix("ELECTION", obj=self.data.settings)
-        lists = vfuncs.dict_with_prefix("LISTS", dict_=self.data.settings)
-        election_history = lists.get("election_types", None)
-        voting_methods = lists.get("vote_methods", None)
 
         elections = {k: v for k, v in self.data.raw_data.items() if k.startswith(('PRI', 'GEN'))}
         election_list = []
@@ -47,15 +46,15 @@ class StateElectionHistoryValidator:
                         f"Invalid election type: {e}"
                     )
                 if v.endswith('E'):
-                    _d['vote_method'] = VoteMethodCodes.EARLY_VOTING
+                    _d['vote_method'] = VoteMethodCodes.EARLY_VOTE
                 elif v.endswith('A'):
                     _d['vote_method'] = VoteMethodCodes.ABSENTEE
                 elif len(v) == 1:
                     _d['vote_method'] = VoteMethodCodes.IN_PERSON
                 else:
                     _d['vote_method'] = None
-                e_validator = VotedInElection(**_d)
+                e_validator = election_fields.VotedInElection(**_d)
                 election_list.append(e_validator)
 
-        self.election_history = election_list
+        # self.elections = election_list
         return self

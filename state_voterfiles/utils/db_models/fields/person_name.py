@@ -1,23 +1,38 @@
-from typing import Optional, Dict, Any, Annotated
+from typing import Dict, Any
+from datetime import datetime
 
+from sqlmodel import Field as SQLModelField, JSON, Relationship, Column, DateTime, func, Date
 from pydantic.types import PastDate
-from pydantic import Field as PydanticField
-from sqlmodel import Field as SQLModelField, JSON
-
-from state_voterfiles.utils.db_models.model_bases import ValidatorBaseModel
-from state_voterfiles.utils.funcs import RecordKeyGenerator
 
 
-class PersonName(ValidatorBaseModel):
+from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
+from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+
+
+class PersonName(SQLModelBase, table=True):
+    __tablename__ = 'person_name'
     id: str | None = SQLModelField(default=None, primary_key=True)
     prefix: str | None = SQLModelField(default=None)
     first: str | None = SQLModelField(default=None)
     last: str | None = SQLModelField(default=None)
     middle: str | None = SQLModelField(default=None)
     suffix: str | None = SQLModelField(default=None)
-    dob: PastDate | None = SQLModelField(default=None)
+    dob: PastDate | None = SQLModelField(default=None, sa_type=Date)
     gender: str | None = SQLModelField(default=None)
-    other_fields: Dict[str, Any] | None = SQLModelField(sa_type=JSON, default=None)
+    other_fields: Dict[str, Any] | None = SQLModelField(sa_type=JSON, default=None, nullable=True)
+    created_at: datetime = SQLModelField(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+        default=None
+    )
+    updated_at: datetime = SQLModelField(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now()
+        ),
+        default=None
+    )
+    records: list['RecordBaseModel'] = Relationship(back_populates='name')
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -29,8 +44,6 @@ class PersonName(ValidatorBaseModel):
     def generate_hash_key(self) -> str:
         keys = [self.prefix, self.first, self.middle, self.last,  self.suffix, self.dob,]
         return RecordKeyGenerator.generate_static_key("_".join([str(key) for key in keys if key is not None]))
-
-
 # class PersonNameModel(Base):
 #     __abstract__ = True
 #
