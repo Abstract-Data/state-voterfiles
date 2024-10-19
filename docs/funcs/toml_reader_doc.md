@@ -1,47 +1,82 @@
-## TomlReader - Read TOML files into Python dictionaries
 
-`TomlReader` is a simple class that allows you to read TOML files and convert them into Python dictionaries. It uses the tomli package to parse the TOML file and return the resulting dictionary.
+# Reference
+::: state_voterfiles.utils.readers.toml_reader
+[//]: # (## TomlReader - Read TOML files into Python dictionaries)
 
-### Installation
-Before using `TomlReader`, you will need to install the tomli package. You can do this using pip:
-```
-pip install tomli
-```
+[//]: # ()
+[//]: # (`TomlReader` is a simple class that allows you to read TOML files and convert them into Python dictionaries. It uses the tomli package to parse the TOML file and return the resulting dictionary.)
 
-Once you have installed tomli, you can install `TomlReader` by copying the code into a Python file and importing it.
+[//]: # ()
+[//]: # (### Installation)
 
-### Usage
-To use `TomlReader`, you will first need to create an instance of the class by providing it with the path to the TOML file you wish to read. Once you have created an instance, you can access the data in the TOML file using the data property.
+[//]: # (Before using `TomlReader`, you will need to install the tomli package. You can do this using pip:)
 
-Here is an example:
+[//]: # (```)
 
-``` py title="toml_reader.py"
-from dataclasses import dataclass, field
-from pathlib import Path
-import tomli
-    
-@dataclass
-class TomlReader:
-    _file: Path
-    _data: dict = field(init=False)
+[//]: # (pip install tomli)
 
+[//]: # (```)
 
-    @property
-    def data(self):
-        with open(self._file, 'rb') as f:
-            return tomli.load(f)
+[//]: # ()
+[//]: # (Once you have installed tomli, you can install `TomlReader` by copying the code into a Python file and importing it.)
 
-# Create an instance of TomlReader with the path to the TOML file
-reader = TomlReader(Path('/path/to/myfile.toml'))
+[//]: # ()
+[//]: # (### Usage)
 
-# Access the data in the TOML file using the data property
-mydata = reader.data
+[//]: # (To use `TomlReader`, you will first need to create an instance of the class by providing it with the path to the TOML file you wish to read. Once you have created an instance, you can access the data in the TOML file using the data property.)
 
-# Now you can use the data in your Python code
-print(mydata['some_key'])
-```
+[//]: # ()
+[//]: # (Here is an example:)
 
-In the example above, mydata will be a Python dictionary containing the data in the TOML file.
+[//]: # ()
+[//]: # (``` py title="toml_reader.py")
 
-### Conclusion
-`TomlReader` is a simple class that allows you to read TOML files and convert them into Python dictionaries. It is easy to use and can be a useful tool when working with TOML files in Python.
+[//]: # (from dataclasses import dataclass, field)
+
+[//]: # (from pathlib import Path)
+
+[//]: # (import tomli)
+
+[//]: # (    )
+[//]: # (@dataclass)
+
+[//]: # (class TomlReader:)
+
+[//]: # (    _file: Path)
+
+[//]: # (    _data: dict = field&#40;init=False&#41;)
+
+[//]: # ()
+[//]: # ()
+[//]: # (    @property)
+
+[//]: # (    def data&#40;self&#41;:)
+
+[//]: # (        with open&#40;self._file, 'rb'&#41; as f:)
+
+[//]: # (            return tomli.load&#40;f&#41;)
+
+[//]: # ()
+[//]: # (# Create an instance of TomlReader with the path to the TOML file)
+
+[//]: # (reader = TomlReader&#40;Path&#40;'/path/to/myfile.toml'&#41;&#41;)
+
+[//]: # ()
+[//]: # (# Access the data in the TOML file using the data property)
+
+[//]: # (mydata = reader.data)
+
+[//]: # ()
+[//]: # (# Now you can use the data in your Python code)
+
+[//]: # (print&#40;mydata['some_key']&#41;)
+
+[//]: # (```)
+
+[//]: # ()
+[//]: # (In the example above, mydata will be a Python dictionary containing the data in the TOML file.)
+
+[//]: # ()
+[//]: # (### Conclusion)
+
+[//]: # (`TomlReader` is a simple class that allows you to read TOML files and convert them into Python dictionaries. It is easy to use and can be a useful tool when working with TOML files in Python.)
