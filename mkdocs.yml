@@ -14,8 +14,8 @@ nav:
         - TomlReader: ./funcs/toml_reader.md
         - CSV Reader: ./funcs/csv_reader.md
         - VoterInfo: ./funcs/voter_info_doc.md
-  - Validators:
-      - Texas: ./validators/texas_validator.md
+  - Validation Models:
+      - RecordRenamer: ./validators/texas_validator.md
   - State Field Info:
       - Texas: ./state-fields/texas-fields.md
       - Ohio: ./state-fields/ohio-fields.md

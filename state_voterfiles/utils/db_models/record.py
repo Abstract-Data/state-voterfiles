@@ -154,16 +154,14 @@ class RecordBaseModel(SQLModel, table=True):
 
             if data.data_source:
                 for data_source in data.data_source:
-                    session.merge(data_source)
+                    _check_data_source = select(DataSource).where(DataSource.file == data_source.file)
+                    if not (existing_data_source := query_one_or_none_(_check_data_source, session)):
+                        session.add(data_source)
+                    else:
+                        data_source = existing_data_source
+                        session.merge(data_source)
                     _final.data_source.append(data_source)
-                # _check_data_source = select(DataSource).where(DataSource.file == data.data_source.file)
-                # if not (existing_data_source := query_one_or_none_(_check_data_source, session)):
-                #     session.add(data.data_source)
-                # else:
-                #     data.data_source = existing_data_source
-                #     session.merge(data.data_source)
-
-
+            session.commit()
 
             # Merge elections
             if data.elections:

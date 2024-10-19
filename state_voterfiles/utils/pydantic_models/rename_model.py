@@ -18,6 +18,20 @@ from state_voterfiles.utils.abcs.toml_record_fields_abc import (
 
 
 class RecordRenamer(ValidatorConfig, abc.ABC):
+    """
+    A Pydantic model for renaming records with various date fields and settings.
+
+    Attributes:
+        person_dob (Optional[str]): The date of birth of the person.
+        person_dob_yearmonth (Optional[str]): The year and month of the person's date of birth.
+        person_dob_year (Optional[str]): The year of the person's date of birth.
+        person_dob_month (Optional[str]): The month of the person's date of birth.
+        person_dob_day (Optional[str]): The day of the person's date of birth.
+        voter_registration_date (Optional[str]): The date of voter registration.
+        raw_data (Dict[str, Any]): A dictionary to store raw original data before transformation.
+        date_format (Union[str, List[str]]): The date format(s) to be used.
+        settings (Dict[str, Any]): Additional settings for the model.
+    """
     person_dob: Annotated[Optional[str], Field(default=None)]
     person_dob_yearmonth: Annotated[Optional[str], Field(default=None)]
     person_dob_year: Annotated[Optional[str], Field(default=None)]
@@ -31,15 +45,38 @@ class RecordRenamer(ValidatorConfig, abc.ABC):
 
 
 class VALIDATOR_FIELDS(TomlFileFieldsABC):
+    """
+    A class to read and store field mappings from a TOML file.
+
+    Attributes:
+        _state (str): The state for which the fields are being read.
+        _field_path (Path): The path to the TOML file containing the field mappings.
+    """
 
     @property
     def fields(self) -> Dict[str, str]:
+        """
+        Reads the field mappings from the TOML file.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the field mappings.
+        """
         _field_toml = TomlReader(file=self._field_path, name=self._state.lower()).data
         self._fields = _field_toml
         return self._fields
 
 
 def create_renamed_model(state: str, field_path: Path) -> Type[ValidatorConfig]:
+    """
+    Creates a dynamic Pydantic model for renaming records based on the provided state and field path.
+
+    Args:
+        state (str): The state for which the model is being created.
+        field_path (Path): The path to the TOML file containing the field mappings.
+
+    Returns:
+        Type[ValidatorConfig]: The dynamically created Pydantic model.
+    """
     _fields = VALIDATOR_FIELDS(_state=state, _field_path=field_path)
     _not_null_fields = {k: k if v == "null" else v for k, v in _fields.FIELDS.items()}
 
@@ -72,18 +109,6 @@ def create_renamed_model(state: str, field_path: Path) -> Type[ValidatorConfig]:
                     )
                 ]
             )
-
-    # _field_name_dict = {
-    #     k: (
-    #         Annotated[
-    #             Optional[str],
-    #             Field(
-    #                 default=None,
-    #                 validation_alias=AliasChoices(*v if isinstance(v, list) else v)
-    #             )
-    #         ]
-    #     ) for k, v in _not_null_fields.items()
-    # }
 
     # Add the date format field to the model.
     _field_name_dict['date_format'] = (Union[str, List[str]], Field(default=_fields.FIELD_FORMATTING['date']))
