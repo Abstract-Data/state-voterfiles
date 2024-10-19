@@ -10,9 +10,10 @@ nav:
   - Home: index.md
 
   - Functions:
-      - TomlReader: ./funcs/toml_reader_doc.md
-      - VoterFileLoader: ./funcs/voter_file_loader.md
-      - VoterInfo: ./funcs/voter_info_doc.md
+      - File Readers:
+        - TomlReader: ./funcs/toml_reader.md
+        - CSV Reader: ./funcs/csv_reader.md
+        - VoterInfo: ./funcs/voter_info_doc.md
   - Validators:
       - Texas: ./validators/texas_validator.md
   - State Field Info:

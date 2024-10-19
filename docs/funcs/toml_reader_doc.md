@@ -1,5 +1,5 @@
 
-# Reference
+# TOML File Reader
 ::: state_voterfiles.utils.readers.toml_reader
 [//]: # (## TomlReader - Read TOML files into Python dictionaries)
 
