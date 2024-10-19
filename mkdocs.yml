@@ -11,7 +11,7 @@ nav:
 
   - Functions:
       - File Readers:
-        - TomlReader: ./funcs/toml_reader.md
+        - TomlReader: ./funcs/toml_reader_doc.md
         - CSV Reader: ./funcs/csv_reader.md
 #        - VoterInfo: ./funcs/voter_info_doc.md
   - Validation:
