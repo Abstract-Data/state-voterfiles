@@ -46,7 +46,11 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       type: datetime
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            annotations_path: brief
 #  - tags
 #  - blog:
 #      blog_dir: ./blog
