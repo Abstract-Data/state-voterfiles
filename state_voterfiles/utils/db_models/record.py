@@ -153,7 +153,7 @@ class RecordBaseModel(SQLModel, table=True):
                 _final.address_list.append(address)
 
             if data.data_source:
-                _final.data_source.append(data.data_source)
+                _final.data_source.extend(data.data_source)
                 # _check_data_source = select(DataSource).where(DataSource.file == data.data_source.file)
                 # if not (existing_data_source := query_one_or_none_(_check_data_source, session)):
                 #     session.add(data.data_source)
