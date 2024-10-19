@@ -8,16 +8,15 @@ edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
-
-  - Functions:
-      - File Readers:
-        - TomlReader: ./funcs/toml_reader_doc.md
-        - CSV Reader: ./funcs/csv_reader.md
-#        - VoterInfo: ./funcs/voter_info_doc.md
   - Validation:
       - Models:
-        - Config: ./validators/config.md
-        - RecordRenamer: ./validators/record_renamer.md
+        - Base Configuration: ./validators/config.md
+        - Record Renaming: ./validators/record_renamer.md
+  - Utilities:
+    - File Readers:
+      - TOML Reader: ./funcs/toml_reader_doc.md
+      - CSV Reader: ./funcs/csv_reader.md
+#        - VoterInfo: ./funcs/voter_info_doc.md
   - State Field Info:
       - Texas: ./state-fields/texas-fields.md
       - Ohio: ./state-fields/ohio-fields.md
