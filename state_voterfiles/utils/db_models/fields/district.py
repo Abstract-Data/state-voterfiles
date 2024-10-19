@@ -1,10 +1,11 @@
 from typing import Optional, Dict, Any, Union
 from datetime import datetime
 
-from sqlmodel import Field as SQLModelField, JSON, Relationship, DateTime, Column, func
+from sqlmodel import Field as SQLModelField, JSON, Relationship, DateTime, Column, func, text
 from sqlalchemy import Enum as SA_Enum
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 
-from state_voterfiles.utils.db_models.categories.district_list import FileDistrictList, DistrictSetLink
+from state_voterfiles.utils.db_models.categories.district_list import FileDistrictList
 from state_voterfiles.utils.abcs.validation_model_abcs import RecordListABC
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 from state_voterfiles.utils.db_models.model_bases import SQLModelBase
@@ -57,46 +58,52 @@ DistrictCodesDB = SA_Enum(
 
 
 class District(RecordListABC, SQLModelBase, table=True):
-    id: str | None = SQLModelField(default=None, primary_key=True)
-    state_abbv: str | None = SQLModelField(default=None, description="State abbreviation")
-    city: str | None = SQLModelField(default=None, description="City name")
-    county: str | None = SQLModelField(default=None, description="County name")
-    type: str | None = SQLModelField(
+    id: Optional[str] = SQLModelField(default=None, primary_key=True)
+    state_abbv: Optional[str] = SQLModelField(default=None, description="State abbreviation")
+    city: Optional[str] = SQLModelField(default=None, description="City name")
+    county: Optional[str] = SQLModelField(default=None, description="County name")
+    type: Optional[str]= SQLModelField(
         default=None,
         sa_column=DistrictCodesDB,
         description="Type of district (e.g., 'city', 'county', 'court', 'state', 'federal')"
         )
-    name: str | None = SQLModelField(default=None, description="Name of the district")
-    number: str | None = SQLModelField(default=None, description="Number or ID of the district")
-    attributes: Dict[str, Any] | None = SQLModelField(
+    name: Optional[str] = SQLModelField(default=None, description="Name of the district")
+    number: Optional[str] = SQLModelField(default=None, description="Number or ID of the district")
+    attributes: Optional[Dict[str, Any]] = SQLModelField(
         default_factory=dict,
         description="Additional attributes specific to the district type",
         sa_type=JSON
     )
+    district_set_id: Optional[str] = SQLModelField(default=None, foreign_key='filedistrictlist.id')
     created_at: datetime = SQLModelField(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
-        default=None
+        sa_column=Column(
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP")
+        )
     )
     updated_at: datetime = SQLModelField(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP"),
+            server_onupdate=text("CURRENT_TIMESTAMP"),
         ),
         default=None
     )
-    district_set: Optional["FileDistrictList"] = Relationship(back_populates="districts", link_model=DistrictSetLink)
+    district_set: list["FileDistrictList"] = Relationship(back_populates="districts")
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.id = self.generate_hash_key()
 
     def generate_hash_key(self) -> str:
         _make_key = RecordKeyGenerator.generate_static_key
         if self.city:
-            self.id = _make_key((self.state_abbv, self.city, self.type, self.name, self.number))
+            _id = _make_key((self.state_abbv, self.city, self.type, self.name, self.number))
         elif self.county:
-            self.id = _make_key((self.state_abbv, self.county, self.type, self.name, self.number))
+            _id = _make_key((self.state_abbv, self.county, self.type, self.name, self.number))
         else:
-            self.id = _make_key((self.state_abbv, self.type, self.name, self.number))
-
-        return self.id
+            _id = _make_key((self.state_abbv, self.type, self.name, self.number))
+        return _id
 
     def __hash__(self):
         return hash(self.id)

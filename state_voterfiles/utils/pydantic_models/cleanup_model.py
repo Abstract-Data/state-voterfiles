@@ -14,7 +14,7 @@ import state_voterfiles.utils.validation.default_funcs as vfuncs
 # from ..pydantic_models.rename_model import RecordRenamer
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from state_voterfiles.utils.db_models.validator_record import *
-from state_voterfiles.utils.db_models.fields.district import District, DistrictSetLink
+from state_voterfiles.utils.db_models.fields.district import District
 # from ..db_models.fields.address import AddressLink
 # from ..db_models.fields.vendor import VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
 # from ..db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
@@ -228,56 +228,111 @@ class PreValidationCleanUp(CleanUpBaseModel):
 
     @model_validator(mode='after')
     def validate_addresses(self):
-        _address_list = set()
-        address_count = 0
-        for address_type in AddressTypeList:
+        address_list: Set[Address] = set()
+        address_count: Dict[AddressType, int] = {AddressType.RESIDENCE: 0, AddressType.MAIL: 0}
+
+        for address_type in AddressType:
+            count = 0
             while True:
-                _func = AddressValidationFuncs
-                prefix = f"{address_type}_{address_count}_" if address_count > 0 else f"{address_type}_"
+                prefix = f"{address_type.value}_{count}_" if count > 0 else f"{address_type.value}_"  # type: ignore
                 if not vfuncs.getattr_with_prefix(prefix, self.data):
-                    break  # No more addresses of this type
+                    break
 
-                _address_exists = _func.validate_address(address_type=address_type, _renamed=self.data)
-                if not _address_exists:
-                    break  # Invalid address, stop processing this type
+                address_data = AddressValidationFuncs.validate_address(
+                    address_type=address_type.value,
+                    _renamed=self.data)  # type: ignore[assignment]
+                if not address_data:
+                    break
 
-                _address, _corrections = _address_exists
-                d = {}
-                self.corrected_errors.setdefault('addresses', {}).update(_corrections)
-                _renamed_dict = {k.replace(f'{address_type}_', ''): v for k, v in _address.items() if v}
-                other_fields = {}
-                for k, v in _renamed_dict.items():
-                    if k not in list((addr := Address).model_fields):
-                        other_fields[k] = v
-                    else:
-                        d[k] = v
-                if other_fields:
-                    d.setdefault('other_fields', {}).update(other_fields)
-                d['address_type'] = address_type
-                _address = Address(**d)
-                if address_type == 'mail':
-                    _address.is_mailing = True
-                elif address_type == 'residential':
-                    _address.is_residence = True
-                _address_list.add(_address)
-                address_count += 1  # Increment to check for additional addresses
-        if address_count == 2 and len(_address_list) == 1:
-            _single_address = _address_list.pop()
-            _single_address.is_residence = True
-            _single_address.is_mailing = True
-            _address_list.add(_single_address)
-        elif address_count == 2 and len(_address_list) == 2:
-            _mailing_address = next((x for x in _address_list if x.is_mailing), None)
-            _mailing_address.is_mailing = True
-            _residence_address = next((x for x in _address_list if x.is_residence), None)
-            _residence_address.is_residence = True
-        else:
-            _single_address = next(iter(_address_list), None)
-            if _single_address:
-                _single_address.is_residence = True if _single_address.address_type == AddressType.RESIDENCE else None
-                _single_address.is_mailing = True if _single_address.address_type == AddressType.MAIL else None
-        self.address_list = _address_list
+                address, corrections = address_data
+                self.corrected_errors.setdefault('addresses', {}).update(corrections)
+
+                renamed_dict = {
+                    k.replace(f'{address_type.value}_', ''): v for k, v in address.items() if v}  # type: ignore
+                other_fields = {k: v for k, v in renamed_dict.items() if k not in Address.model_fields}
+                address_fields = {k: v for k, v in renamed_dict.items() if k in Address.model_fields}
+
+                address_fields['address_type'] = address_type.value  # type: ignore
+                address_fields['other_fields'] = other_fields
+                address_fields['is_mailing'] = address_type == AddressType.MAIL
+                address_fields['is_residence'] = address_type == AddressType.RESIDENCE
+
+                new_address = Address(**address_fields)
+                address_list.add(new_address)
+                address_count[address_type] += 1  # type: ignore
+                count += 1
+
+        total_addresses = sum(address_count.values())
+
+        if total_addresses == 2 and len(address_list) == 1:
+            single_address = address_list.pop()
+            single_address.is_residence = True
+            single_address.is_mailing = True
+            address_list.add(single_address)
+        elif total_addresses == 2 and len(address_list) == 2:
+            for address in address_list:
+                address.is_mailing = address.address_type == AddressType.MAIL.value
+                address.is_residence = address.address_type == AddressType.RESIDENCE.value
+        elif len(address_list) == 1:
+            single_address = next(iter(address_list))
+            single_address.is_residence = single_address.address_type == AddressType.RESIDENCE.value
+            single_address.is_mailing = single_address.address_type == AddressType.MAIL.value
+
+        self.address_list = address_list
         return self
+
+    # @model_validator(mode='after')
+    # def validate_addresses(self):
+    #     _address_list = set()
+    #     address_count = 0
+    #     for address_type in AddressTypeList:
+    #         while True:
+    #             _func = AddressValidationFuncs
+    #             prefix = f"{address_type}_{address_count}_" if address_count > 0 else f"{address_type}_"
+    #             if not vfuncs.getattr_with_prefix(prefix, self.data):
+    #                 break  # No more addresses of this type
+    #
+    #             _address_exists = _func.validate_address(address_type=address_type, _renamed=self.data)
+    #             if not _address_exists:
+    #                 break  # Invalid address, stop processing this type
+    #
+    #             _address, _corrections = _address_exists
+    #             d = {}
+    #             self.corrected_errors.setdefault('addresses', {}).update(_corrections)
+    #             _renamed_dict = {k.replace(f'{address_type}_', ''): v for k, v in _address.items() if v}
+    #             other_fields = {}
+    #             for k, v in _renamed_dict.items():
+    #                 if k not in list((addr := Address).model_fields):
+    #                     other_fields[k] = v
+    #                 else:
+    #                     d[k] = v
+    #             if other_fields:
+    #                 d.setdefault('other_fields', {}).update(other_fields)
+    #             d['address_type'] = address_type
+    #             _address = Address(**d)
+    #             if address_type == 'mail':
+    #                 _address.is_mailing = True
+    #             elif address_type == 'residential':
+    #                 _address.is_residence = True
+    #             _address_list.add(_address)
+    #             address_count += 1  # Increment to check for additional addresses
+    #     if address_count == 2 and len(_address_list) == 1:
+    #         _single_address = _address_list.pop()
+    #         _single_address.is_residence = True
+    #         _single_address.is_mailing = True
+    #         _address_list.add(_single_address)
+    #     elif address_count == 2 and len(_address_list) == 2:
+    #         _mailing_address = next((x for x in _address_list if x.is_mailing), None)
+    #         _mailing_address.is_mailing = True
+    #         _residence_address = next((x for x in _address_list if x.is_residence), None)
+    #         _residence_address.is_residence = True
+    #     else:
+    #         _single_address = next(iter(_address_list), None)
+    #         if _single_address:
+    #             _single_address.is_residence = True if _single_address.address_type == AddressType.RESIDENCE else None
+    #             _single_address.is_mailing = True if _single_address.address_type == AddressType.MAIL else None
+    #     self.address_list = _address_list
+    #     return self
 
     validate_edr = model_validator(mode='after')(DateValidators.validate_date_edr)
     validate_phones = model_validator(mode='after')(PhoneNumberValidationFuncs.validate_phones)
@@ -428,8 +483,6 @@ class PreValidationCleanUp(CleanUpBaseModel):
             if all_districts:
                 for district in all_districts:
                     self.district_set.add_or_update(district)
-                self.district_set.generate_hash_key()
-                # self.district_set_id = self.district_set.id
                 self.corrected_errors.update(
                     {f'{k}_districts': 'Parsed district information' for k, v in districts.items() if v}
                 )
@@ -466,7 +519,7 @@ class PreValidationCleanUp(CleanUpBaseModel):
     @model_validator(mode='after')
     def set_file_origin(self):
         if _file_origin := self.input_data.original_data.get('file_origin'):
-            self.data_source = DataSource(file=_file_origin)
+            self.data_source.append(DataSource(file=_file_origin))
         return self
 
     # @staticmethod

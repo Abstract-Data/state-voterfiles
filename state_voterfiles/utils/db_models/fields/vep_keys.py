@@ -5,7 +5,7 @@ from state_voterfiles.utils.db_models.model_bases import SQLModelBase
 
 class VEPMatch(SQLModelBase, table=True):
     __tablename__ = 'vep_match'
-    id: int | None = SQLModelField(default=None, primary_key=True)
+    id: int | None = SQLModelField(default=None, primary_key=True, sa_column_kwargs={"autoincrement": True})
     uuid: str | None = SQLModelField(default=None)
     long: str | None = SQLModelField(default=None)
     short: str | None = SQLModelField(default=None)

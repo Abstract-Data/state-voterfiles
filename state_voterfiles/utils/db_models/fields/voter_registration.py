@@ -1,7 +1,8 @@
 from typing import Dict, Any
 from datetime import date, datetime
 
-from sqlmodel import Field as SQLModelField, JSON, Relationship, Column, DateTime, func
+from sqlmodel import Field as SQLModelField, JSON, Relationship, Column, DateTime, func, text
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 from state_voterfiles.utils.db_models.model_bases import SQLModelBase
@@ -19,14 +20,16 @@ class VoterRegistration(SQLModelBase, table=True):
     precinct_name: str | None = SQLModelField(default=None)
     attributes: Dict[str, Any] | None = SQLModelField(default=None, sa_type=JSON)
     created_at: datetime = SQLModelField(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
-        default=None
+        sa_column=Column(
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP")
+        )
     )
     updated_at: datetime = SQLModelField(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP"),
+            server_onupdate=text("CURRENT_TIMESTAMP"),
         ),
         default=None
     )

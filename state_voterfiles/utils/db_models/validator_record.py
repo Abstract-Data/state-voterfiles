@@ -36,6 +36,6 @@ class CleanUpBaseModel(ValidatorConfig):
     # vote_methods: list[ElectionVoteMethod] = SQLModelField(default_factory=list)
     # vote_history: list[Voted] = SQLModelField(default_factory=list)
     corrected_errors: dict[str, Any] = SQLModelField(default_factory=dict)
-    data_source: Optional[DataSource] = SQLModelField(default=None)
+    data_source: list[DataSource] = SQLModelField(default_factory=list)
     input_data: Optional[InputData] = SQLModelField(default=None)
     vep_keys: Optional[VEPMatch] = SQLModelField(default=None)

@@ -25,7 +25,6 @@ from state_voterfiles.utils.pydantic_models.cleanup_model import (
     DataSource,
     DataSourceLink,
     District,
-    DistrictSetLink,
     InputData,
     VEPMatch,
     PhoneLink

@@ -1,11 +1,12 @@
 import datetime
 from typing import Dict, Any
 from enum import StrEnum
+import asyncio
 
 from sqlmodel import Field as SQLModelField, JSON, Relationship, SQLModel, Session, select, Relationship, ForeignKey
-from sqlalchemy.orm import configure_mappers, declared_attr
-from sqlalchemy import Engine, event, func
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.future import select as async_select
+from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 from pydantic import model_validator
 
@@ -25,7 +26,8 @@ from state_voterfiles.utils.db_models.fields.vendor import (
 from state_voterfiles.utils.db_models.fields.vep_keys import VEPMatch
 from state_voterfiles.utils.db_models.fields.data_source import DataSource, DataSourceLink
 from state_voterfiles.utils.db_models.fields.input_data import InputData
-from state_voterfiles.utils.db_models.fields.district import District, FileDistrictList, DistrictSetLink
+from state_voterfiles.utils.db_models.fields.district import District, FileDistrictList
+
 # from ..db_models.categories.district_list import FileDistrictList
 
 
@@ -39,7 +41,9 @@ from state_voterfiles.utils.db_models.fields.district import District, FileDistr
 #  Use 'ForwardRefs' for RecordBaseModel.
 
 MODEL_LIST = [Address, PersonName, VoterRegistration, ValidatedPhoneNumber, VendorName, VendorTags, ElectionTypeDetails,
-              ElectionVoteMethod, ElectionVote, DataSource, InputData, VEPMatch,  District,]
+              ElectionVoteMethod, ElectionVote, DataSource, InputData, VEPMatch, District, ]
+
+
 class RecordBaseModel(SQLModel, table=True):
     id: int | None = SQLModelField(
         default=None,
@@ -77,22 +81,8 @@ class RecordBaseModel(SQLModel, table=True):
     vendor_tag_record_links: list["VendorTagsToVendorToRecordLink"] = Relationship(
         back_populates='record')
     vote_history: list[ElectionVote] = Relationship(
-        back_populates="record",
-        # link_model=ElectionAndVoterLink,
-        # sa_relationship_kwargs={
-        #     'primaryjoin': 'RecordBaseModel.voter_registration_id == ElectionAndVoterLink.record_voter_id',
-        #     'secondaryjoin': 'ElectionAndVoterLink.election_vote_id == ElectionVote.id'
-        # }
+        back_populates="record"
     )
-        # sa_relationship_kwargs={
-        #     'primaryjoin': 'RecordBaseModel.voter_registration_id == VoterAndElectionLink.voter_id',
-        #     'secondaryjoin': 'VoterAndElectionLink.vote_history_id == VotedInElection.id',
-        #     'overlaps': "voters,vote_history"
-        # }
-    # vote_history: list["VotedInElection"] = SQLModelField(default_factory=list)
-    # unassigned: dict[str, Any] = SQLModelField(
-    #     default=None,
-    #     sa_type=JSON)
     vep_keys: "VEPMatch" = Relationship(
         back_populates='records')
     input_data: "InputData" = Relationship(
@@ -101,58 +91,45 @@ class RecordBaseModel(SQLModel, table=True):
         back_populates='records',
         link_model=DataSourceLink)
 
-    # def __init__(self):
-    #     super().__init__()
-    #     AddressLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'f{RecordBaseModel.__tablename__}.id',
-    #         primary_key=True)
-    #
-    #     PhoneLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'{RecordBaseModel.__tablename__}.id',
-    #         primary_key=True)
-    #
-    #     # # Relationships from elections.py
-    #     ElectionLinkToRecord.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'{RecordBaseModel.__tablename__}.id',
-    #         primary_key=True)
-    #     ElectionLinkToRecord.record = Relationship(back_populates="election_link_records")
-    #
-    #     # Relationships from data_source.py
-    #     DataSourceLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'{RecordBaseModel.__tablename__}.id',
-    #         primary_key=True)
-    #
-    #     # Relationships from district.py
-    #     DistrictLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f"{RecordBaseModel.__tablename__}.id",
-    #         primary_key=True)
-    #     DistrictLinkToRecord.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f"{RecordBaseModel.__tablename__}.id",
-    #         primary_key=True)
-    #     DistrictLinkToRecord.record = Relationship(back_populates="district_link_records")
-    #     configure_mappers()
-
     @staticmethod
     def add_created_and_updated_columns():
         for model in MODEL_LIST:
             model.add_created_and_update_columns()
 
+    @staticmethod
+    def _query_one_or_none(stmt: select, session: Session):
+        return session.execute(stmt).scalar_one_or_none()
 
     @staticmethod
     def set_relationships(data: "PreValidationCleanUp", engine: Engine):
         SQLModel.metadata.create_all(engine)
         with Session(engine) as session:
-            session.add(data.name)
-            session.add(data.voter_registration)
-            session.add(data.vep_keys)
-            session.add(data.input_data)
-            session.commit()
+            query_one_or_none_ = RecordBaseModel._query_one_or_none
+            _name = select(PersonName).where(PersonName.id == data.name.id)
+            _voter_registration = select(VoterRegistration).where(VoterRegistration.vuid == data.voter_registration.vuid)
+            _vep_keys = select(VEPMatch).where(VEPMatch.id == data.vep_keys.id)
+            _input_data = select(InputData).where(InputData.id == data.input_data.id)
+
+            if not (existing_name := query_one_or_none_(_name, session)):
+                session.add(data.name)
+            else:
+                data.name = existing_name
+
+            if not (existing_voter_registration := query_one_or_none_(_voter_registration, session)):
+                session.add(data.voter_registration)
+            else:
+                data.voter_registration = existing_voter_registration
+
+            if not (existing_vep_keys := query_one_or_none_(_vep_keys, session)):
+                session.add(data.vep_keys)
+            else:
+                data.vep_keys = existing_vep_keys
+
+            if not (existing_input_data := query_one_or_none_(_input_data, session)):
+                session.add(data.input_data)
+            else:
+                data.input_data = existing_input_data
+            session.flush()
 
             _final = RecordBaseModel(
                 name=data.name,
@@ -163,79 +140,189 @@ class RecordBaseModel(SQLModel, table=True):
             )
             session.add(_final)
             for address in data.address_list:
-                try:
+                _check_address = select(Address).where(Address.id == address.id)
+                if not (existing_address := query_one_or_none_(_check_address, session)):
                     session.add(address)
-                    session.commit()
-                except IntegrityError as e:
-                    session.rollback()
+                else:
+                    # if existing_address.is_mailing:
+                    #     address.is_mailing = existing_address.is_mailing
+                    # if existing_address.is_residence:
+                    #     address.is_residence = existing_address.is_residence
+                    address = existing_address
                     session.merge(address)
                 _final.address_list.append(address)
 
             if data.data_source:
-                existing_data_source = session.execute(
-                    select(DataSource).where(DataSource.file == data.data_source.file)
-                ).scalar_one_or_none()
-
-                if existing_data_source:
-                    data.data_source = existing_data_source
-                else:
-                    session.add(data.data_source)
                 _final.data_source.append(data.data_source)
+                # _check_data_source = select(DataSource).where(DataSource.file == data.data_source.file)
+                # if not (existing_data_source := query_one_or_none_(_check_data_source, session)):
+                #     session.add(data.data_source)
+                # else:
+                #     data.data_source = existing_data_source
+                #     session.merge(data.data_source)
 
-            _phone_numbers = [data.phone] if data.phone else []
-            session.add_all(_phone_numbers)
-            session.commit()
+
 
             # Merge elections
             if data.elections:
-                current_time = datetime.datetime.now()
                 for election in data.elections:
-                    _election = election.election
-                    _vote_method = election.vote_method
-                    _vote_record = election.vote_record
-                    for each in [_election, _vote_method]:
-                        try:
-                            session.add(each)
-                            session.commit()
-                        except IntegrityError as e:
-                            session.rollback()
-                            session.merge(each)
+                    _check_election = select(ElectionTypeDetails).where(ElectionTypeDetails.id == election.election.id)
+                    _check_vote_method = select(ElectionVoteMethod).where(ElectionVoteMethod.id == election.vote_method.id)
+                    if not (existing_election := query_one_or_none_(_check_election, session)):
+                        session.add(election.election)
+                    else:
+                        election.election = existing_election
 
-                    _election.election_vote_methods.append(_vote_method)
-                    _vote_record.voter_id = _final.voter_registration_id
-                    _final.vote_history.append(_vote_record)
-
-            try:
-                session.commit()
-            except IntegrityError as e:
-                session.rollback()
-                print(f"IntegrityError occurred: {e}")
+                    if not (existing_vote_method := query_one_or_none_(_check_vote_method, session)):
+                        session.add(election.vote_method)
+                    else:
+                        election.vote_method = existing_vote_method
+                    _final.vote_history.append(election.vote_record)
 
             if data.district_set:
-                try:
+                data.district_set.id = data.district_set.generate_hash_key()
+                _check_district_set = select(FileDistrictList).where(FileDistrictList.id == data.district_set.id)
+                existing_district_set = query_one_or_none_(_check_district_set, session)
+                if existing_district_set:
+                    # Merge the existing district set with the new one
+                    for district in data.district_set.districts:
+                        if district not in existing_district_set.districts:
+                            existing_district_set.districts.add_or_update(district)
+                    session.merge(existing_district_set)
+                else:
+                    # Add the new district set
                     session.add(data.district_set)
-                    session.commit()
-                except IntegrityError as e:
-                    session.rollback()
-                    session.merge(data.district_set)
                 _final.district_set_id = data.district_set.id
 
-            _vendor_names_link = [
-                VendorTagsToVendorLink(
-                    vendor_id=x.id,
-                    tag_id=_final.id
-                ) for x in data.vendor_names
-            ] if data.vendor_names else []
+            if data.vendor_names:
+                _check_vendor_names = select(VendorName).where(VendorName.id == data.vendor_names.id)
+                if not (existing_vendor_names := query_one_or_none_(_check_vendor_names, session)):
+                    session.add(data.vendor_names)
+                else:
+                    data.vendor_names = existing_vendor_names
 
-            _vendor_tags_link = [
-                VendorTagsToVendorLink(
-                    vendor_id=x.id,
-                    tag_id=_final.id
-                ) for x in data.vendor_tags
-            ] if data.vendor_tags else []
-            session.add_all(_vendor_names_link)
-            session.add_all(_vendor_tags_link)
+                if data.vendor_tags:
+                    _check_vendor_tags = select(VendorTags).where(VendorTags.id == data.vendor_tags.id)
+                    if not (existing_vendor_tags := query_one_or_none_(_check_vendor_tags, session)):
+                        session.add(data.vendor_tags)
+                    else:
+                        data.vendor_tags = existing_vendor_tags
+                    data.vendor_names.tags.append(data.vendor_tags)
+                    _final.vendor_tag_record_links.append(data.vendor_tags)
             session.commit()
+
+
+    # @staticmethod
+    # async def async_set_relationships(data: "PreValidationCleanUp", engine: AsyncEngine):
+    #
+    #     async with AsyncSession(engine) as session:
+    #         async with session.begin():
+    #             async def query_one_or_none_(stmt):
+    #                 result = await session.execute(stmt)
+    #                 return result.scalar_one_or_none()
+    #
+    #             _name = async_select(PersonName).where(PersonName.id == data.name.id)
+    #             _voter_registration = async_select(VoterRegistration).where(VoterRegistration.vuid == data.voter_registration.vuid)
+    #             _vep_keys = async_select(VEPMatch).where(VEPMatch.id == data.vep_keys.id)
+    #             _input_data = async_select(InputData).where(InputData.id == data.input_data.id)
+    #             _data_source = async_select(DataSource).where(DataSource.file == data.data_source.file)
+    #
+    #             if not (existing_name := await query_one_or_none_(_name)):
+    #                 session.add(data.name)
+    #             else:
+    #                 data.name = existing_name
+    #
+    #             if not (existing_voter_registration := await query_one_or_none_(_voter_registration)):
+    #                 session.add(data.voter_registration)
+    #             else:
+    #                 data.voter_registration = existing_voter_registration
+    #
+    #             if not (existing_vep_keys := await query_one_or_none_(_vep_keys)):
+    #                 session.add(data.vep_keys)
+    #             else:
+    #                 data.vep_keys = existing_vep_keys
+    #
+    #             if not (existing_input_data := await query_one_or_none_(_input_data)):
+    #                 session.add(data.input_data)
+    #             else:
+    #                 data.input_data = existing_input_data
+    #
+    #             await session.flush()
+    #
+    #             _final = RecordBaseModel(
+    #                 name=data.name,
+    #                 voter_registration_id=data.voter_registration.id,
+    #                 voter_registration=data.voter_registration,
+    #                 vep_keys=data.vep_keys,
+    #                 input_data=data.input_data
+    #             )
+    #             session.add(_final)
+    #             await session.flush()
+    #
+    #             async def process_address(address):
+    #                 _check_address = async_select(Address).where(Address.id == address.id)
+    #                 if not (existing_address := await query_one_or_none_(_check_address)):
+    #                     session.add(address)
+    #                 else:
+    #                     if address.is_mailing:
+    #                         address.is_mailing = existing_address.is_mailing
+    #                     if address.is_residence:
+    #                         address.is_residence = existing_address.is_residence
+    #                     address = existing_address
+    #                 _final.address_list.append(address)
+    #
+    #             await asyncio.gather(*[process_address(address) for address in data.address_list])
+    #
+    #             if data.data_source:
+    #                 _check_data_source = async_select(DataSource).where(DataSource.file == data.data_source.file)
+    #                 if not (existing_data_source := await query_one_or_none_(_check_data_source)):
+    #                     session.add(data.data_source)
+    #                 else:
+    #                     data.data_source = existing_data_source
+    #                 _final.data_source.append(data.data_source)
+    #
+    #             if data.elections:
+    #                 async def process_election(election):
+    #                     _check_election = async_select(ElectionTypeDetails).where(ElectionTypeDetails.id == election.election.id)
+    #                     _check_vote_method = async_select(ElectionVoteMethod).where(ElectionVoteMethod.id == election.vote_method.id)
+    #                     if not (existing_election := await query_one_or_none_(_check_election)):
+    #                         session.add(election.election)
+    #                     else:
+    #                         election.election = existing_election
+    #
+    #                     if not (existing_vote_method := await query_one_or_none_(_check_vote_method)):
+    #                         session.add(election.vote_method)
+    #                     else:
+    #                         election.vote_method = existing_vote_method
+    #                     _final.vote_history.append(election.vote_record)
+    #
+    #                 await asyncio.gather(*[process_election(election) for election in data.elections])
+    #
+    #             if data.district_set:
+    #                 _check_district_set = async_select(FileDistrictList).where(FileDistrictList.id == data.district_set.id)
+    #                 existing_district_set = await query_one_or_none_(_check_district_set)
+    #                 if existing_district_set:
+    #                     existing_district_set.merge(data.district_set)
+    #                     data.district_set = existing_district_set
+    #                 else:
+    #                     session.add(data.district_set)
+    #                 _final.district_set_id = data.district_set.id
+    #
+    #             if data.vendor_names:
+    #                 _check_vendor_names = async_select(VendorName).where(VendorName.id == data.vendor_names.id)
+    #                 if not (existing_vendor_names := await query_one_or_none_(_check_vendor_names)):
+    #                     session.add(data.vendor_names)
+    #                 else:
+    #                     data.vendor_names = existing_vendor_names
+    #
+    #                 if data.vendor_tags:
+    #                     _check_vendor_tags = async_select(VendorTags).where(VendorTags.id == data.vendor_tags.id)
+    #                     if not (existing_vendor_tags := await query_one_or_none_(_check_vendor_tags)):
+    #                         session.add(data.vendor_tags)
+    #                     else:
+    #                         data.vendor_tags = existing_vendor_tags
+    #                     data.vendor_names.tags.append(data.vendor_tags)
+    #                     _final.vendor_tag_record_links.append(data.vendor_tags)
 
     # def create_flat_record(self):
     #     data = {
@@ -267,7 +354,6 @@ class RecordBaseModel(SQLModel, table=True):
     #                 (x.party for x in self.vote_history if x.election == election), None)
     #
     #     return data
-
 
 # class RecordBaseModel(_model_bases.ValidatorBaseModel, table=True):
 #     name: PersonName | None = SQLModelField(default=None)
@@ -324,74 +410,74 @@ class RecordBaseModel(SQLModel, table=True):
 #                     (x.party for x in self.vote_history if x.election == election), None)
 #
 #         return data
-        # session.merge(tables.voter_registration(**self.voter_registration.model_dump()))
-        # session.merge(self.input_data)
-        # if session.exec(select(DataSource).where(DataSource.file == self.data_source.file)).first():
-        #     session.merge(self.data_source)
-        # else:
-        #     session.add(self.data_source)
-        #     session.commit()
-        #     session.refresh(self.data_source)
-        #
-        # _model = self.db_model(
-        #     name_id=self.name.id,
-        #     voter_registration_id=self.voter_registration.id,
-        #     vep_keys_id=self.vep_keys.id,
-        #     input_data_id=self.input_data.id
-        # )
-        # session.add(_model)
-        #
-        # session.add(DataSourceLink(data_source_id=self.data_source.id, record_id=_model.id))
-        # session.add(_model)
-        # session.commit()
-        # session.refresh(_model)
-        #
-        #
-        # for address in self.address_list:
-        #     session.merge(address)
-        #     session.add(
-        #         RecordAddressLink(
-        #             address_id=address.id,
-        #             record_id=_model.id,
-        #             is_mailing=address.is_mailing,
-        #             is_residence=address.is_residence
-        #         )
-        #     )
-        #
-        # if self.district_set:
-        #     for district in self.district_set.districts:
-        #         session.add(district)
-        #         session.add(RecordDistrictLink(district_id=district.id, record_id=_model.id))
-        #
-        # if self.phone:
-        #     for phone in self.phone:
-        #         session.add(phone)
-        #         session.add(RecordPhoneLink(phone_id=phone.id, record_id=_model.id))
-        #
-        # if self.vote_history:
-        #     session.add_all([x for x in self.elections])
-        #     for vote in self.vote_history:
-        #         session.add(vote)
-        #         session.add(
-        #             RecordElectionLink(
-        #                 election_id=vote.election_id,
-        #                 vote_details_id=vote.id,
-        #                 record_id=_model.id
-        #             )
-        #         )
-        #
-        # if self.vendor_names:
-        #     for vendor in self.vendor_names:
-        #         session.add(vendor)
-        #         session.refresh(vendor)
-        #
-        # if self.vendor_tags:
-        #     for tag in self.vendor_tags:
-        #         session.add(tag)
-        #         session.add(VendorNameToTagLink(vendor_id=vendor.id, tag_id=tag.id))
-        #         session.add(RecordVendorTagLink(tag_id=tag.id, record_id=_model.id))
-        # session.commit()
-        # return _model
+# session.merge(tables.voter_registration(**self.voter_registration.model_dump()))
+# session.merge(self.input_data)
+# if session.exec(select(DataSource).where(DataSource.file == self.data_source.file)).first():
+#     session.merge(self.data_source)
+# else:
+#     session.add(self.data_source)
+#     session.commit()
+#     session.refresh(self.data_source)
+#
+# _model = self.db_model(
+#     name_id=self.name.id,
+#     voter_registration_id=self.voter_registration.id,
+#     vep_keys_id=self.vep_keys.id,
+#     input_data_id=self.input_data.id
+# )
+# session.add(_model)
+#
+# session.add(DataSourceLink(data_source_id=self.data_source.id, record_id=_model.id))
+# session.add(_model)
+# session.commit()
+# session.refresh(_model)
+#
+#
+# for address in self.address_list:
+#     session.merge(address)
+#     session.add(
+#         RecordAddressLink(
+#             address_id=address.id,
+#             record_id=_model.id,
+#             is_mailing=address.is_mailing,
+#             is_residence=address.is_residence
+#         )
+#     )
+#
+# if self.district_set:
+#     for district in self.district_set.districts:
+#         session.add(district)
+#         session.add(RecordDistrictLink(district_id=district.id, record_id=_model.id))
+#
+# if self.phone:
+#     for phone in self.phone:
+#         session.add(phone)
+#         session.add(RecordPhoneLink(phone_id=phone.id, record_id=_model.id))
+#
+# if self.vote_history:
+#     session.add_all([x for x in self.elections])
+#     for vote in self.vote_history:
+#         session.add(vote)
+#         session.add(
+#             RecordElectionLink(
+#                 election_id=vote.election_id,
+#                 vote_details_id=vote.id,
+#                 record_id=_model.id
+#             )
+#         )
+#
+# if self.vendor_names:
+#     for vendor in self.vendor_names:
+#         session.add(vendor)
+#         session.refresh(vendor)
+#
+# if self.vendor_tags:
+#     for tag in self.vendor_tags:
+#         session.add(tag)
+#         session.add(VendorNameToTagLink(vendor_id=vendor.id, tag_id=tag.id))
+#         session.add(RecordVendorTagLink(tag_id=tag.id, record_id=_model.id))
+# session.commit()
+# return _model
 
 # class RecordModel(Base):
 #     __abstract__ = True

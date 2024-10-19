@@ -2,8 +2,9 @@ from typing import Optional
 from datetime import date, datetime
 
 from pydantic.dataclasses import dataclass as pydantic_dataclass
-from sqlmodel import Field as SQLModelField, JSON, Relationship, UniqueConstraint, Column, DateTime, func
+from sqlmodel import Field as SQLModelField, JSON, Relationship, UniqueConstraint, Column, DateTime, func, text
 from sqlalchemy import Enum as SA_Enum
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from state_voterfiles.utils.db_models.model_bases import SQLModelBase
 from state_voterfiles.utils.helpers.election_history_codes import (
@@ -126,14 +127,16 @@ class ElectionVoteMethod(SQLModelBase, table=True):
     vote_method: VoteMethodCodes = SQLModelField(sa_column=VoteMethodDB)
     election_id: str = SQLModelField(foreign_key="electiontypedetails.id", unique=False)
     created_at: datetime = SQLModelField(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
-        default=None
+        sa_column=Column(
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP")
+        )
     )
     updated_at: datetime = SQLModelField(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP"),
+            server_onupdate=text("CURRENT_TIMESTAMP"),
         ),
         default=None
     )
@@ -168,15 +171,16 @@ class ElectionVote(SQLModelBase, table=True):
     election_id: str = SQLModelField(foreign_key="electiontypedetails.id", primary_key=True)
     vote_method_id: str = SQLModelField(foreign_key="electionvotemethod.id", primary_key=True)
     created_at: datetime = SQLModelField(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
-        default=None
+        sa_column=Column(
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP")
+        )
     )
     updated_at: datetime = SQLModelField(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now(),
-            server_onupdate=func.now()
+            TIMESTAMP(timezone=True),
+            server_default=text("CURRENT_TIMESTAMP"),
+            server_onupdate=text("CURRENT_TIMESTAMP"),
         ),
         default=None
     )
