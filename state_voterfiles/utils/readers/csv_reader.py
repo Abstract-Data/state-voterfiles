@@ -15,9 +15,17 @@ ENABLE_LOGGING = False
 
 # @logfire.no_auto_trace
 def clean_filename(filename: str, max_length: int = 63) -> str:
-    # Ensure the string contains only ASCII characters
+    """
+    Cleans and truncates a filename to ensure it contains only ASCII characters and is within a specified length.
+
+    Args:
+        filename (str): The original filename to be cleaned.
+        max_length (int, optional): The maximum length of the cleaned filename. Defaults to 63.
+
+    Returns:
+        str: The cleaned and truncated filename.
+    """
     filename = ''.join(char for char in filename if char in string.ascii_letters + string.digits)
-    # Truncate the string to the max_length
     return filename[:max_length]
 
 
@@ -30,6 +38,15 @@ def clean_filename(filename: str, max_length: int = 63) -> str:
 
 # @logfire.no_auto_trace
 def detect_file_encoding(file: Path):
+    """
+    Detects the encoding of a given file by reading its content in chunks.
+
+    Args:
+        file (Path): The path to the file whose encoding is to be detected.
+
+    Returns:
+        str: The detected encoding of the file.
+    """
     ic.configureOutput(prefix='detect_file_encoding()|') if ENABLE_LOGGING else ic.disable()
     _multiplier = 1
     confidence = 0
@@ -59,6 +76,16 @@ def detect_file_encoding(file: Path):
 
 # @logfire.no_auto_trace
 def detect_delimiter(file_path: Path, num_lines: int = 10) -> str:
+    """
+    Detects the delimiter used in a CSV file by analyzing a specified number of lines.
+
+    Args:
+        file_path (Path): The path to the CSV file.
+        num_lines (int, optional): The number of lines to analyze for delimiter detection. Defaults to 10.
+
+    Returns:
+        str: The detected delimiter.
+    """
     ic.configureOutput(prefix='detect_delimiter()|') if ENABLE_LOGGING else ic.disable()
     common_delimiters = [',', '\t', ';', '|']
     delimiter_counts = {delimiter: 0 for delimiter in common_delimiters}
@@ -81,6 +108,17 @@ def detect_delimiter(file_path: Path, num_lines: int = 10) -> str:
 
 # @logfire.no_auto_trace
 def clean_and_read_csv(file_path: Path, delimiter=',', **csv_kwargs) -> Generator[Dict[str, Any], None, None]:
+    """
+    Cleans and reads a CSV file, replacing null bytes and yielding each row as a dictionary.
+
+    Args:
+        file_path (Path): The path to the CSV file.
+        delimiter (str, optional): The delimiter used in the CSV file. Defaults to ','.
+        **csv_kwargs: Additional keyword arguments for the CSV reader.
+
+    Yields:
+        Dict[str, Any]: Each row in the CSV file as a dictionary.
+    """
     with open(file_path, 'rb') as file:
         content = file.read().replace(b'\x00', b'')
     cleaned_content = StringIO(content.decode(csv_kwargs.get("encoding", "utf-8")))
@@ -91,6 +129,15 @@ def clean_and_read_csv(file_path: Path, delimiter=',', **csv_kwargs) -> Generato
 
 # @logfire.no_auto_trace
 def include_file_origin(func: Callable) -> Callable:
+    """
+    Decorator that adds the file origin to each record yielded by the decorated function.
+
+    Args:
+        func (Callable): The function to be decorated.
+
+    Returns:
+        Callable: The decorated function.
+    """
     def wrapper(*args, **kwargs):
         records = func(*args, **kwargs)
         for record in records:
@@ -101,6 +148,15 @@ def include_file_origin(func: Callable) -> Callable:
 
 # @logfire.no_auto_trace
 def include_file_date_created(func: Callable) -> Callable:
+    """
+    Decorator that adds the file creation date to each record yielded by the decorated function.
+
+    Args:
+        func (Callable): The function to be decorated.
+
+    Returns:
+        Callable: The decorated function.
+    """
     def wrapper(*args, **kwargs):
         records = func(*args, **kwargs)
         for record in records:
@@ -111,6 +167,15 @@ def include_file_date_created(func: Callable) -> Callable:
 
 # @logfire.no_auto_trace
 def include_file_date_imported(func: Callable) -> Callable:
+    """
+    Decorator that adds the file import date to each record yielded by the decorated function.
+
+    Args:
+        func (Callable): The function to be decorated.
+
+    Returns:
+        Callable: The decorated function.
+    """
     def wrapper(*args, **kwargs):
         records = func(*args, **kwargs)
         for record in records:
@@ -120,6 +185,15 @@ def include_file_date_imported(func: Callable) -> Callable:
 
 
 def replace_empty_with_none(record: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Replaces empty string values in a dictionary with None.
+
+    Args:
+        record (Dict[str, Any]): The dictionary to be processed.
+
+    Returns:
+        Dict[str, Any]: The processed dictionary with empty strings replaced by None.
+    """
     reader = csv.DictReader(f, delimiter=_delim, fieldnames=first_row_header)
     return {k: (v if v != '' else None) for k, v in record.items()}
 
@@ -137,6 +211,16 @@ def read_csv(file: Path, **kwargs):
 @include_file_date_created
 @include_file_date_imported
 def read_csv(file: Union[str, Path], **kwargs) -> Generator[Dict[str, Any], None, None]:
+    """
+    Reads a CSV file and yields each row as a dictionary, with additional metadata.
+
+    Args:
+        file (Union[str, Path]): The path to the CSV file.
+        **kwargs: Additional keyword arguments for the CSV reader.
+
+    Yields:
+        Dict[str, Any]: Each row in the CSV file as a dictionary with additional metadata.
+    """
     ic.configureOutput(prefix='read_csv()|') if ENABLE_LOGGING else ic.disable()
     if isinstance(file, str):
         file = Path(file)
