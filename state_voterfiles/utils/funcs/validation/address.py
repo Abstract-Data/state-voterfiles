@@ -41,7 +41,7 @@ class AddressValidationFuncs:
     def create_address_lines(address_dict: dict, _type: str) -> helpers.AddressLinesOrdered:
         if _type in AddressTypeList:
             d = address_dict
-            _state, _zip5, _adr_str = None, None, None
+            _city, _state, _zip5, _adr_str = None, None, None, None
             if all([key.startswith(f"{_type}_part") for key in d]):
                 for k, v in d.items():
                     if k.startswith(f"{_type}_part"):

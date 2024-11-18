@@ -702,13 +702,13 @@ test = ["flufl.flake8", "importlib-resources (>=1.3)", "jaraco.test (>=5.4)", "p
 
 [[package]]
 name = "logfire"
-version = "0.52.0"
+version = "2.3.0"
 description = "The best Python observability tool! 🪵🔥"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
-    {file = "logfire-0.52.0-py2.py3-none-any.whl", hash = "sha256:2faa346b858adbbfad0bd9895103479e0d3a52c882a7d83e6290c8a00bd24db1"},
-    {file = "logfire-0.52.0.tar.gz", hash = "sha256:21b202901e13f340e41765b072af11dc84d96b29ebd54dfd346dcac4942be6c9"},
+    {file = "logfire-2.3.0-py3-none-any.whl", hash = "sha256:812febd7cc29fdd7551d40161b7aa877a1bc8b4f74ef5bcfb0f0ca790f5184f4"},
+    {file = "logfire-2.3.0.tar.gz", hash = "sha256:2a29a7a31079201cbad494b865b27bf93b75df70dd752df0f121467a23709bbb"},
 ]
 
 [package.dependencies]
@@ -723,6 +723,7 @@ typing-extensions = ">=4.1.0"
 
 [package.extras]
 aiohttp = ["opentelemetry-instrumentation-aiohttp-client (>=0.42b0)"]
+asgi = ["opentelemetry-instrumentation-asgi (>=0.42b0)"]
 asyncpg = ["opentelemetry-instrumentation-asyncpg (>=0.42b0)"]
 celery = ["opentelemetry-instrumentation-celery (>=0.42b0)"]
 django = ["opentelemetry-instrumentation-django (>=0.42b0)"]
@@ -738,6 +739,7 @@ requests = ["opentelemetry-instrumentation-requests (>=0.42b0)"]
 sqlalchemy = ["opentelemetry-instrumentation-sqlalchemy (>=0.42b0)"]
 starlette = ["opentelemetry-instrumentation-starlette (>=0.42b0)"]
 system-metrics = ["opentelemetry-instrumentation-system-metrics (>=0.42b0)"]
+wsgi = ["opentelemetry-instrumentation-wsgi (>=0.42b0)"]
 
 [[package]]
 name = "markdown-it-py"
@@ -2332,4 +2334,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10"
-content-hash = "b15466bb5f6eee7543d686cb33de2413d09c04810bebc741b96d3f40787d7554"
+content-hash = "ccaad3f8d8e67ce9e3a8e3b19a59db0a54a3d07c56f867e6cf747a282f53fee2"

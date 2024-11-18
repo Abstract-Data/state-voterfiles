@@ -10,19 +10,10 @@ from pydantic import model_validator
 from pydantic_core import PydanticCustomError
 
 import state_voterfiles.utils.validation.default_funcs as vfuncs
-# from ..db_models.record import RecordBaseModel
-# from ..pydantic_models.rename_model import RecordRenamer
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from state_voterfiles.utils.db_models.validator_record import *
 from state_voterfiles.utils.db_models.fields.district import District
-# from ..db_models.fields.address import AddressLink
-# from ..db_models.fields.vendor import VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
-# from ..db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
 from election_utils.election_models import ElectionVote
-# from ..db_models.fields.vep_keys import VEPMatch
-# from ..db_models.fields.data_source import DataSourceLink
-# from ..db_models.fields.district import DistrictLink, DistrictLinkToRecord
-# from ..db_models.categories.district_list import FileDistrictList
 from state_voterfiles.utils.helpers.district_codes import DistrictCodes
 from state_voterfiles.utils.funcs.validation.address import (
     AddressValidationFuncs,
@@ -33,18 +24,10 @@ from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationF
 from state_voterfiles.utils.funcs.validation.vep_keys import VEPKeyMaker
 from state_voterfiles.utils.funcs.validation.dates import DateValidators
 from state_voterfiles.utils.funcs.validation.election_history import ElectionValidationFuncs
-# from ..db_models.record import RecordBaseModel
-# from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationFuncs
-# from state_voterfiles.utils.funcs.validation.vep_keys import VEPKeyMaker
-# from state_voterfiles.utils.funcs.validation.dates import DateValidators
-# from state_voterfiles.utils.funcs.validation.election_history import ElectionValidationFuncs
+
 ic.enable()
 ic.configureOutput(prefix='PreValidationCleanUp| ', includeContext=True)
 
-# TODO: Check districts to make sure they validate TODO: Remove all validation aliases so that we can use SQLModel
-#  directly for the models
-# TODO: Run validation on state voterfiles, specifically Texas to ensure changes made to
-#   validation process in cleanup still work.
 
 RAISE_EXCEPTIONS_FOR_CHANGES = False
 

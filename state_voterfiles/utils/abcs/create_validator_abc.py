@@ -44,6 +44,7 @@ class CreateValidatorABC(abc.ABC):
     _validation_generator: Optional[RunValidationOutput] = field(default=None, init=False)
     _valid_count: int = field(default=0, init=False)
     _invalid_count: int = field(default=0, init=False)
+    _logger: logfire.span = field(default=logfire.span("CreateValidatorABC"), init=False)
 
     def __repr__(self):
         return f"Validation Model: {self.validator.__name__}"
@@ -61,8 +62,10 @@ class CreateValidatorABC(abc.ABC):
             yield 'invalid', error_detail
 
     def run_validation(self, records: InputRecords) -> None:
-        self._records = records
-        self._validation_generator = self._create_validation_generator()
+        with self._logger as log:
+            log.info("Running validation on records for %s", self.state_name[0])
+            self._records = records
+            self._validation_generator = self._create_validation_generator()
 
     def _create_validation_generator(self) -> RunValidationOutput:
         if self._records is None:
