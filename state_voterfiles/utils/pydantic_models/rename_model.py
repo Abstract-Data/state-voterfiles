@@ -9,7 +9,7 @@ from pydantic import (
     create_model,
 )
 
-import state_voterfiles.utils.validation.default_funcs as funcs
+import state_voterfiles.utils.validation.renamer_funcs as rename_func
 from state_voterfiles.utils.readers.toml_reader import TomlReader
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from state_voterfiles.utils.abcs.toml_record_fields_abc import (
@@ -82,8 +82,9 @@ def create_renamed_model(state: str, field_path: Path) -> Type[ValidatorConfig]:
 
     # _not_null_fields = {k: v for k, v in _fields.FIELDS.items() if v == "null"}  # Set fields that are not empty/null.
     _validators: Dict[str, Any] = {
-        'clear_blank_strings': model_validator(mode='before')(funcs.clear_blank_strings),
-        'create_raw_data_dict': model_validator(mode='before')(funcs.create_raw_data_dict),
+        'clear_blank_strings': model_validator(mode='before')(rename_func.clear_blank_strings),
+        'create_raw_data_dict': model_validator(mode='before')(rename_func.create_raw_data_dict),
+        'check_for_address_state': model_validator(mode='after')(rename_func.check_address_has_state),
     }  # Validators for the renaming model.
 
     # Create the field name dictionary for the model.

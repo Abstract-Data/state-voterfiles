@@ -18,7 +18,7 @@ from state_voterfiles.utils.db_models.fields.district import District
 # from ..db_models.fields.address import AddressLink
 # from ..db_models.fields.vendor import VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
 # from ..db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
-from ..db_models.fields.elections import ElectionVote
+from election_utils.election_models import ElectionVote
 # from ..db_models.fields.vep_keys import VEPMatch
 # from ..db_models.fields.data_source import DataSourceLink
 # from ..db_models.fields.district import DistrictLink, DistrictLinkToRecord
@@ -54,100 +54,7 @@ InvalidRecords = Iterable[Type[ValidatorConfig]]
 ValidationResults = Tuple[PassedRecords, InvalidRecords]
 
 
-def check_if_fields_exist(self):
-    _person_details = self.person_details
-    if not _person_details:
-        raise PydanticCustomError(
-            'missing_person_details',
-            'Missing person details. Unable to generate a strong key to match with',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'set_validator_types'
-            }
-        )
-
-    if not self.name and vfuncs.getattr_with_prefix('person_name', self.data):
-        raise PydanticCustomError(
-            'missing_name_object',
-            'There is name data in the renamer, but unable to create a name object',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'set_validator_types'
-            }
-        )
-    if not self.phone and (_phone_data := vfuncs.getattr_with_prefix('contact_phone', self.data)):
-        if not len(_phone_data) == 1:
-            raise PydanticCustomError(
-                'missing_phone_object',
-                'There is phone data in the renamer, but unable to create a phone object',
-                {
-                    'validator_model': self.__class__.__name__,
-                    'method_type': 'model_validator',
-                    'method_name': 'set_validator_types'
-                }
-            )
-    if not any([x.address_type for x in self.address_list if x.address_type in AddressTypeList]):
-        raise PydanticCustomError(
-            'missing_address',
-            'Missing address information. Unable to generate VEP keys',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'set_validator_types'
-            }
-        )
-    elif self.data.settings.get('FILE-TYPE') == 'VOTERFILE':
-        if not self.residential_address:
-            raise PydanticCustomError(
-                'missing_residential_address',
-                'Missing residential address information for voter record.',
-                {
-                    'validator_model': self.__class__.__name__,
-                    'method_type': 'model_validator',
-                    'method_name': 'set_validator_types'
-                }
-            )
-
-    if not self.voter_registration and vfuncs.getattr_with_prefix('voter', self.data):
-        raise PydanticCustomError(
-            'missing_voter_registration',
-            'There is voter registration data in the renamer, but unable to create a voter registration object',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'set_validator_types'
-            }
-        )
-
-    if not self.district_set.districts and vfuncs.getattr_with_prefix('district', self.data):
-        raise PydanticCustomError(
-            'missing_districts',
-            'There is district data in the renamer, but unable to create a district object',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'set_validator_types'
-            }
-        )
-
-    if not self.vendor_names and vfuncs.getattr_with_prefix('vendor_names', self.data):
-        raise PydanticCustomError(
-            'missing_vendors',
-            'There is vendor data in the renamer, but unable to create a vendor object',
-            {
-                'validator_model': self.__class__.__name__,
-                'method_type': 'model_validator',
-                'method_name': 'set_validator_types'
-            }
-        )
-    return self
-
-
 # TODO: Modify to create a collected phones set
-
-# TODO: Modify Address Storage so it keeps address ID from address collections table in the record information
 
 # TODO: Figure out a way to do district combinations so there's a table of combinations linked to each other
 #  and that combination table can be linked to the record.
@@ -155,6 +62,7 @@ def check_if_fields_exist(self):
 # TODO: With the district combinations, figure out a way to check if there's some districts, but not others already
 #  in the database, if so, go ahead and expand the comination into the record.
 #  May not need to do that though if it's just generating a list of districts and creating combinations accordingly.
+
 class PreValidationCleanUp(CleanUpBaseModel):
     name_id: Optional[int] = SQLModelField(default=None)
 
@@ -228,111 +136,80 @@ class PreValidationCleanUp(CleanUpBaseModel):
 
     @model_validator(mode='after')
     def validate_addresses(self):
-        address_list: Set[Address] = set()
+        address_list: List[Address] = list()
         address_count: Dict[AddressType, int] = {AddressType.RESIDENCE: 0, AddressType.MAIL: 0}
 
-        for address_type in AddressType:
-            count = 0
-            while True:
-                prefix = f"{address_type.value}_{count}_" if count > 0 else f"{address_type.value}_"  # type: ignore
-                if not vfuncs.getattr_with_prefix(prefix, self.data):
-                    break
-
-                address_data = AddressValidationFuncs.validate_address(
-                    address_type=address_type.value,
-                    _renamed=self.data)  # type: ignore[assignment]
-                if not address_data:
-                    break
-
-                address, corrections = address_data
-                self.corrected_errors.setdefault('addresses', {}).update(corrections)
-
-                renamed_dict = {
-                    k.replace(f'{address_type.value}_', ''): v for k, v in address.items() if v}  # type: ignore
-                other_fields = {k: v for k, v in renamed_dict.items() if k not in Address.model_fields}
-                address_fields = {k: v for k, v in renamed_dict.items() if k in Address.model_fields}
-
-                address_fields['address_type'] = address_type.value  # type: ignore
-                address_fields['other_fields'] = other_fields
-                address_fields['is_mailing'] = address_type == AddressType.MAIL
-                address_fields['is_residence'] = address_type == AddressType.RESIDENCE
-
-                new_address = Address(**address_fields)
-                address_list.add(new_address)
-                address_count[address_type] += 1  # type: ignore
-                count += 1
-
-        total_addresses = sum(address_count.values())
-
-        if total_addresses == 2 and len(address_list) == 1:
-            single_address = address_list.pop()
-            single_address.is_residence = True
-            single_address.is_mailing = True
-            address_list.add(single_address)
-        elif total_addresses == 2 and len(address_list) == 2:
-            for address in address_list:
-                address.is_mailing = address.address_type == AddressType.MAIL.value
-                address.is_residence = address.address_type == AddressType.RESIDENCE.value
-        elif len(address_list) == 1:
-            single_address = next(iter(address_list))
-            single_address.is_residence = single_address.address_type == AddressType.RESIDENCE.value
-            single_address.is_mailing = single_address.address_type == AddressType.MAIL.value
-
+        _residence = self._filter(AddressType.RESIDENCE)
+        _mail = self._filter(AddressType.MAIL)
+        for address, _type in [(_residence, AddressType.RESIDENCE), (_mail, AddressType.MAIL)]:
+            if not address:
+                continue
+            address_lines = AddressValidationFuncs.create_address_lines(
+                address_dict=address,
+                _type=_type)
+            address_parts = AddressValidationFuncs.create_address_parts(address_lines)
+            address_data = Address(
+                address_type=_type,
+                **address_parts['lines'].model_dump(),
+            )
+            address_data.address_parts = address_parts['parts']
+            if _already_exists := next((a for a in address_list if a.id == address_data.id), None):
+                address_data = address_list.pop(address_list.index(_already_exists))
+            if _type == AddressType.MAIL:
+                address_data.is_mailing = True
+            if _type == AddressType.RESIDENCE:
+                address_data.is_residence = True
+            address_list.append(address_data)
         self.address_list = address_list
         return self
 
-    # @model_validator(mode='after')
-    # def validate_addresses(self):
-    #     _address_list = set()
-    #     address_count = 0
-    #     for address_type in AddressTypeList:
-    #         while True:
-    #             _func = AddressValidationFuncs
-    #             prefix = f"{address_type}_{address_count}_" if address_count > 0 else f"{address_type}_"
-    #             if not vfuncs.getattr_with_prefix(prefix, self.data):
-    #                 break  # No more addresses of this type
-    #
-    #             _address_exists = _func.validate_address(address_type=address_type, _renamed=self.data)
-    #             if not _address_exists:
-    #                 break  # Invalid address, stop processing this type
-    #
-    #             _address, _corrections = _address_exists
-    #             d = {}
-    #             self.corrected_errors.setdefault('addresses', {}).update(_corrections)
-    #             _renamed_dict = {k.replace(f'{address_type}_', ''): v for k, v in _address.items() if v}
-    #             other_fields = {}
-    #             for k, v in _renamed_dict.items():
-    #                 if k not in list((addr := Address).model_fields):
-    #                     other_fields[k] = v
-    #                 else:
-    #                     d[k] = v
-    #             if other_fields:
-    #                 d.setdefault('other_fields', {}).update(other_fields)
-    #             d['address_type'] = address_type
-    #             _address = Address(**d)
-    #             if address_type == 'mail':
-    #                 _address.is_mailing = True
-    #             elif address_type == 'residential':
-    #                 _address.is_residence = True
-    #             _address_list.add(_address)
-    #             address_count += 1  # Increment to check for additional addresses
-    #     if address_count == 2 and len(_address_list) == 1:
-    #         _single_address = _address_list.pop()
-    #         _single_address.is_residence = True
-    #         _single_address.is_mailing = True
-    #         _address_list.add(_single_address)
-    #     elif address_count == 2 and len(_address_list) == 2:
-    #         _mailing_address = next((x for x in _address_list if x.is_mailing), None)
-    #         _mailing_address.is_mailing = True
-    #         _residence_address = next((x for x in _address_list if x.is_residence), None)
-    #         _residence_address.is_residence = True
-    #     else:
-    #         _single_address = next(iter(_address_list), None)
-    #         if _single_address:
-    #             _single_address.is_residence = True if _single_address.address_type == AddressType.RESIDENCE else None
-    #             _single_address.is_mailing = True if _single_address.address_type == AddressType.MAIL else None
-    #     self.address_list = _address_list
-    #     return self
+
+        # for address_type in AddressType:
+        #     count = 0
+        #     while True:
+        #         prefix = f"{address_type.value}_{count}_" if count > 0 else f"{address_type.value}_"  # type: ignore
+        #         if not vfuncs.getattr_with_prefix(prefix, self.data):
+        #             break
+        #
+        #         address_data = AddressValidationFuncs.validate_address(
+        #             address_type=address_type,
+        #             _renamed=self.data)
+        #         if not address_data:
+        #             break
+        #
+        #         address, corrections = address_data
+        #         self.corrected_errors.setdefault('addresses', {}).update(corrections)
+        #
+        #         renamed_dict = {
+        #             k.replace(f'{address_type.value}_', ''): v for k, v in address.items() if v}  # type: ignore
+        #         other_fields = {k: v for k, v in renamed_dict.items() if k not in Address.model_fields}
+        #         address_fields = {k: v for k, v in renamed_dict.items() if k in Address.model_fields}
+        #
+        #         address_fields['address_type'] = address_type
+        #         address_fields['other_fields'] = other_fields
+        #         address_fields['is_mailing'] = address_type == AddressType.MAIL
+        #         address_fields['is_residence'] = address_type == AddressType.RESIDENCE
+        #
+        #         new_address = Address(**address_fields)
+        #         address_list.append(new_address)
+        #         address_count[address_type] += 1  # type: ignore
+        #         count += 1
+        #
+        # total_addresses = sum(address_count.values())
+        #
+        # if total_addresses == 2 and len(address_list) == 1:
+        #     single_address = address_list.pop()
+        #     single_address.is_residence = True
+        #     single_address.is_mailing = True
+        #     address_list.append(single_address)
+        # elif total_addresses == 2 and len(address_list) == 2:
+        #     for address in address_list:
+        #         address.is_mailing = address.address_type == AddressType.MAIL.value
+        #         address.is_residence = address.address_type == AddressType.RESIDENCE.value
+        # elif len(address_list) == 1:
+        #     single_address = next(iter(address_list))
+        #     single_address.is_residence = single_address.address_type == AddressType.RESIDENCE.value
+        #     single_address.is_mailing = single_address.address_type == AddressType.MAIL.value
 
     validate_edr = model_validator(mode='after')(DateValidators.validate_date_edr)
     validate_phones = model_validator(mode='after')(PhoneNumberValidationFuncs.validate_phones)
@@ -381,7 +258,7 @@ class PreValidationCleanUp(CleanUpBaseModel):
         if new_vendor_dict:
             for k, v in new_vendor_dict.items():
                 vendor_obj = VendorName(name=k)
-                self.vendor_names.add(vendor_obj)
+                self.vendor_names.append(vendor_obj)
                 if v:
                     for _k, _v in v.items():
                         try:
@@ -488,7 +365,7 @@ class PreValidationCleanUp(CleanUpBaseModel):
                 )
         return self
 
-    check_for_fields = model_validator(mode='after')(check_if_fields_exist)
+    check_for_fields = model_validator(mode='after')(vfuncs.check_if_fields_exist)
 
     @model_validator(mode='after')
     def set_vuid_in_vote_history(self):
@@ -500,7 +377,7 @@ class PreValidationCleanUp(CleanUpBaseModel):
 
     @model_validator(mode='after')
     def set_validator_types(self):
-        AddressValidationFuncs.process_addresses(self)
+        # AddressValidationFuncs.process_addresses(self)
         self.name = PersonName(**vfuncs.remove_prefix(self.person_details, ['person_name_', 'person_']))
         _input_data = {
             'original_data': self.raw_data,
@@ -521,77 +398,3 @@ class PreValidationCleanUp(CleanUpBaseModel):
         if _file_origin := self.input_data.original_data.get('file_origin'):
             self.data_source.append(DataSource(file=_file_origin))
         return self
-
-    # @staticmethod
-    # def create_relationships_on_cleanup(record_model: Type[SQLModel]):
-    #
-    #     AddressLink.address_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f"{Address.__tablename__}.id",
-    #         primary_key=True)
-    #     AddressLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'f{record_model.__tablename__}.id',
-    #         primary_key=True)
-    #     Address.records = Relationship(
-    #         back_populates='address_list',
-    #         link_model=AddressLink)
-    #
-    #     PhoneLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'{record_model.__tablename__}.id',
-    #         primary_key=True)
-    #
-    #     ValidatedPhoneNumber.records = Relationship(
-    #         back_populates='phone',
-    #         link_model=PhoneLink)
-    #
-    #     VendorTags.vendors = Relationship(back_populates="tags", link_model=VendorTagsToVendorLink)
-    #     VendorName.tags = Relationship(back_populates="vendors", link_model=VendorTagsToVendorLink)
-    #
-    #     VendorTagsToVendorToRecordLink.record_id = SQLModelField(default=None, foreign_key="record_base.id", primary_key=True)
-    #     VendorTagsToVendorToRecordLink.record = Relationship(back_populates='vendor_tag_record_links')
-    #
-    #     # # Relationships from elections.py
-    #     ElectionLinkToRecord.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'{record_model.__tablename__}.id',
-    #         primary_key=True)
-    #     ElectionLinkToRecord.record = Relationship(back_populates="election_link_records")
-    #
-    #     # Relationships from data_source.py
-    #     DataSource.records = Relationship(
-    #         back_populates='data_source',
-    #         link_model=DataSourceLink)
-    #
-    #     DataSourceLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f'{record_model.__tablename__}.id',
-    #         primary_key=True)
-    #
-    #     # Relationships from district.py
-    #     DistrictLink.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f"{record_model.__tablename__}.id",
-    #         primary_key=True)
-    #     DistrictLinkToRecord.record_id = SQLModelField(
-    #         default=None,
-    #         foreign_key=f"{record_model.__tablename__}.id",
-    #         primary_key=True)
-    #     DistrictLinkToRecord.record = Relationship(back_populates="district_link_records")
-    #     configure_mappers()
-    #     return record_model
-
-    # @model_validator(mode='after')
-    # def set_foreign_ids(self):
-    #     if self.data_source:
-    #         self.data_source_id = self.data_source.id
-    #     if self.input_data:
-    #         self.input_data_id = self.input_data.id
-    #     if self.name:
-    #         self.name_id = self.name.id
-    #     if self.voter_registration:
-    #         self.voter_registration_id = self.voter_registration.id
-    #     if self.district_set:
-    #         self.district_set_id = self.district_set.id
-    #     return self

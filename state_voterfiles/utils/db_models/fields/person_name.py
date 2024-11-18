@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 from datetime import datetime
+import uuid
 
 from sqlmodel import Field as SQLModelField, JSON, Relationship, Column, DateTime, func, Date, text
 from pydantic.types import PastDate
@@ -8,6 +9,11 @@ from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+
+
+class PersonNameLink(SQLModelBase, table=True):
+    record_id: Optional[int] = SQLModelField(foreign_key='recordbasemodel.id', primary_key=True)
+    name_id: Optional[str] = SQLModelField(foreign_key='person_name.id', primary_key=True)
 
 
 class PersonName(SQLModelBase, table=True):
@@ -35,7 +41,7 @@ class PersonName(SQLModelBase, table=True):
         ),
         default=None
     )
-    records: list['RecordBaseModel'] = Relationship(back_populates='name')
+    records: list['RecordBaseModel'] = Relationship(back_populates='name', link_model=PersonNameLink)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -47,6 +53,7 @@ class PersonName(SQLModelBase, table=True):
     def generate_hash_key(self) -> str:
         keys = [self.prefix, self.first, self.middle, self.last,  self.suffix, self.dob,]
         return RecordKeyGenerator.generate_static_key("_".join([str(key) for key in keys if key is not None]))
+        # return RecordKeyGenerator.generate_static_key("_".join([str(key) for key in keys if key is not None]))
 # class PersonNameModel(Base):
 #     __abstract__ = True
 #

@@ -1,8 +1,9 @@
 from dataclasses import field, dataclass
 from typing import Tuple, Iterable, Dict, Any, Optional, Generator
 
-from sqlmodel import SQLModel, Relationship, Field as SQLModelField
-from sqlalchemy.orm import configure_mappers
+from sqlmodel import SQLModel, Relationship, Field as SQLModelField, Session, select
+from sqlalchemy import Engine
+from sqlalchemy.exc import IntegrityError
 from state_voterfiles.utils.abcs.create_validator_abc import (
     CreateValidatorABC,
     RunValidationOutput,
@@ -20,10 +21,7 @@ from state_voterfiles.utils.pydantic_models.cleanup_model import (
     Address,
     AddressLink,
     ValidatedPhoneNumber,
-    ElectionTypeDetails,
-    ElectionVoteMethod,
     DataSource,
-    DataSourceLink,
     District,
     InputData,
     VEPMatch,
@@ -142,7 +140,7 @@ class CreateValidator:
         self.cleanup_validator = CleanUpRecordValidator(self.state_name, self.cleanup_validator)
 
     @property
-    def valid(self) -> Generator[SQLModel, None, None]:
+    def valid(self) -> Generator[PreValidationCleanUp, None, None]:
         if self._validation_pipeline:
             # raise ValueError("run_validation must be called before accessing valid records")
             for status, record in self._validation_pipeline:
@@ -219,3 +217,167 @@ class CreateValidator:
                 error_type = error['error_type']
                 error_summary[error_type] = error_summary.get(error_type, 0) + 1
         return error_summary
+
+
+@dataclass
+class CreateRecords:
+    engine: Optional[Engine] = None
+    records: list[RecordBaseModel] = field(default_factory=list)
+    errors: list[PreValidationCleanUp] = field(default_factory=list)
+
+    def _get_or_create_person_name(self, person_name: PersonName, session: Session) -> PersonName:
+        existing = session.execute(
+            select(PersonName).where(PersonName.id == person_name.id)
+        ).scalar_one_or_none()
+
+        if existing:
+            return session.merge(person_name)
+        else:
+            session.add(person_name)
+            session.flush()
+            return person_name
+
+
+    def _get_or_create_election(self, election: "ElectionTypeDetails", session: Session) -> "ElectionTypeDetails":
+        """Get existing election or create a new one if it doesn't exist."""
+        existing = session.execute(
+            select(type(election)).where(type(election).id == election.id)
+        ).scalar_one_or_none()
+
+        if existing:
+            # Update existing election with any new information
+            if election.dates and not existing.dates:
+                existing.dates = election.dates
+            if election.desc and not existing.desc:
+                existing.desc = election.desc
+            return existing
+        else:
+            session.add(election)
+            return election
+
+    def _get_or_create_vote_method(self, vote_method: "VoteMethod", election: "ElectionTypeDetails",
+                                   session: Session) -> "VoteMethod":
+        """Get existing vote method or create a new one if it doesn't exist."""
+        existing = next(
+            (vm for vm in election.election_vote_methods if vm.id == vote_method.id),
+            None
+        )
+        if existing:
+            return existing
+        else:
+            election.election_vote_methods.append(vote_method)
+            session.add(vote_method)
+            return vote_method
+
+    def _get_or_create_district_list(self, district_list: "FileDistrictList", session: Session) -> "FileDistrictList":
+        existing = session.execute(
+            select(type(district_list)).where(type(district_list).id == district_list.id)
+        ).scalar_one_or_none()
+
+        if existing:
+            session.merge(district_list)
+            return existing
+        else:
+            session.add(district_list)
+            return district_list
+
+    def _get_or_create_address(self, address: Address, session: Session) -> "Address":
+        existing = session.execute(
+            select(Address).where(Address.id == address.id)
+        ).scalar_one_or_none()
+
+        if existing:
+            return existing
+        else:
+            session.add(address)
+            session.flush()
+            return address
+
+    def _get_or_create_data_source(self, data_source: "DataSource", session: Session) -> "DataSource":
+        existing = session.execute(
+            select(type(data_source)).where(type(data_source).file == data_source.file)
+        ).scalar_one_or_none()
+
+        if existing:
+            return existing
+        else:
+            session.add(data_source)
+            session.flush()
+            return data_source
+
+    def _each_record_cleanup(self, data: PreValidationCleanUp, session: Session) -> RecordBaseModel:
+        error_count = 0
+        try:
+            session.add_all([data.voter_registration, data.input_data])
+            _districts = self._get_or_create_district_list(data.district_set, session)
+            _person_name = self._get_or_create_person_name(data.name, session)
+            _data_source = [self._get_or_create_data_source(x, session) for x in data.data_source][0]
+
+            record = RecordBaseModel(
+                name_id=_person_name.id,
+                name=_person_name,
+                voter_registration_id=data.voter_registration.vuid,
+                district_set_id=_districts.id,
+                input_data_id=data.input_data.id,
+                data_source_id=_data_source.file,
+                voter_registration=data.voter_registration,
+                input_data=data.input_data,
+                district_set=_districts,
+                data_source=_data_source
+            )
+            session.add(record)
+            # record.data_source = [self._get_or_create_data_source(x, session) for x in data.data_source][0]
+            if data.vep_keys:
+                record.vep_keys_id = data.vep_keys.id
+                record.vep_keys = data.vep_keys
+
+            addresses = list(set(self._get_or_create_address(address, session) for address in data.address_list))
+            record.address_list.extend(addresses)
+            for e in data.elections:
+                election = self._get_or_create_election(e.election, session)
+                vote_method = self._get_or_create_vote_method(e.vote_method, election, session)
+
+                # Create the vote record
+                vote_record = e.vote_record
+                vote_record.election = election
+                vote_record.vote_method = vote_method
+                record.vote_history.append(vote_record)
+            session.add(record)
+            session.commit()
+            return record
+
+        except IntegrityError as e:
+            session.rollback()
+            error_count += 1
+            self.errors.append(data)
+
+
+    def create_db_records(self, records: Iterable[PreValidationCleanUp]) -> None:
+        with Session(self.engine) as session:
+            with session.no_autoflush:
+                for i, record in enumerate(records, 1):
+                    try:
+                        self._each_record_cleanup(record, session)
+                        if i % 10000 == 0:
+                            print(f"Processed {i:,} records")
+                    except Exception as e:
+                        print(f"Error processing record {i}: {str(e)}")
+                        continue  # Skip failed records and continue with the next one
+
+    def _create_non_db_record(self, record: PreValidationCleanUp) -> RecordBaseModel:
+        return RecordBaseModel(
+            name=record.name,
+            voter_registration=record.voter_registration,
+            district_set=record.district_set,
+            address_list=record.address_list,
+            phone=record.phone,
+            data_source=record.data_source[0],
+            input_data=record.input_data,
+            vep_keys=record.vep_keys,
+            vote_history=[x.vote_record for x in record.elections],
+        )
+
+    def create_records(self, records: Iterable[PreValidationCleanUp]) -> Generator[RecordBaseModel, None, None]:
+        for record in records:
+            yield self._create_non_db_record(record)
+

@@ -5,6 +5,7 @@ from typing import Tuple, NamedTuple, Annotated, Optional, List
 from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
 from collections import OrderedDict
+import usaddress
 
 
 """ === TYPE HINTS === """
@@ -71,55 +72,56 @@ class AddressLinesOrdered(BaseModel):
     zipcode: Annotated[Optional[str], Field(default=None)]
     standardized: Annotated[Optional[str], Field(default=None)]
 
-    @model_validator(mode='after')
-    def create_zipcode(self):
-        while True:
-            if self.zip5:
-                if len(self.zip5) == 5:
-                    if self.zip4 and len(self.zip4) == 4:
-                        self.zipcode = f"{self.zip5}-{self.zip4}"
-                    else:
-                        self.zipcode = self.zip5
-                    break
-                else:
-                    # Handle the case where zip5 is not of length 5 (if needed)
-                    self.zip5 = None
-                    break
-            else:
-                # Handle the case where zip5 is not present (if needed)
-                break
-        return self
 
-    @model_validator(mode='after')
-    def standardize_address(self):
-        std = " ".join([x for x in [self.address1, self.address2] if x])
-        if all([std, self.city, self.state, self.zipcode]):
-            std += f", {self.city}, {self.state} {self.zipcode}"
-            self.standardized = std
-        return self
+    # @model_validator(mode='after')
+    # def create_zipcode(self):
+    #     while True:
+    #         if self.zip5:
+    #             if len(self.zip5) == 5:
+    #                 if self.zip4 and len(self.zip4) == 4:
+    #                     self.zipcode = f"{self.zip5}-{self.zip4}"
+    #                 else:
+    #                     self.zipcode = self.zip5
+    #                 break
+    #             else:
+    #                 # Handle the case where zip5 is not of length 5 (if needed)
+    #                 self.zip5 = None
+    #                 break
+    #         else:
+    #             # Handle the case where zip5 is not present (if needed)
+    #             break
+    #     return self
+    #
+    # @model_validator(mode='after')
+    # def standardize_address(self):
+    #     std = " ".join([x for x in [self.address1, self.address2] if x])
+    #     if all([std, self.city, self.state, self.zipcode]):
+    #         std += f", {self.city}, {self.state} {self.zipcode}"
+    #         self.standardized = std
+    #     return self
 
 
 class AddressPartsDict(BaseModel):
-    AddressNumberPrefix: Annotated[Optional[List[str]], Field(default=None)]
-    AddressNumber: Annotated[Optional[List[str]], Field(default=None)]
-    AddressNumberSuffix: Annotated[Optional[List[str]], Field(default=None)]
-    StreetNamePreModifier: Annotated[Optional[List[str]], Field(default=None)]
-    StreetNamePreDirectional: Annotated[Optional[List[str]], Field(default=None)]
-    StreetNamePreType: Annotated[Optional[List[str]], Field(default=None)]
-    StreetName: Annotated[Optional[List[str]], Field(default=None)]
-    StreetNamePostType: Annotated[Optional[List[str]], Field(default=None)]
-    StreetNamePostDirectional: Annotated[Optional[List[str]], Field(default=None)]
-    BuildingName: Annotated[Optional[List[str]], Field(default=None)]
-    OccupancyType: Annotated[Optional[List[str]], Field(default=None)]
-    OccupancyIdentifier: Annotated[Optional[List[str]], Field(default=None)]
-    PlaceName: Annotated[Optional[List[str]], Field(default=None)]
-    StateName: Annotated[Optional[List[str]], Field(default=None)]
-    ZipCode: Annotated[Optional[List[str]], Field(default=None)]
-    ZipPlus4: Annotated[Optional[List[str]], Field(default=None)]
-    USPSBoxType: Annotated[Optional[List[str]], Field(default=None)]
-    USPSBoxID: Annotated[Optional[List[str]], Field(default=None)]
-    USPSBoxGroupType: Annotated[Optional[List[str]], Field(default=None)]
-    USPSBoxGroupID: Annotated[Optional[List[str]], Field(default=None)]
+    AddressNumberPrefix: Annotated[Optional[List[str] | str], Field(default=None)]
+    AddressNumber: Annotated[Optional[List[str] | str], Field(default=None)]
+    AddressNumberSuffix: Annotated[Optional[List[str] | str], Field(default=None)]
+    StreetNamePreModifier: Annotated[Optional[List[str] | str], Field(default=None)]
+    StreetNamePreDirectional: Annotated[Optional[List[str] | str], Field(default=None)]
+    StreetNamePreType: Annotated[Optional[List[str] | str], Field(default=None)]
+    StreetName: Annotated[Optional[List[str] | str], Field(default=None)]
+    StreetNamePostType: Annotated[Optional[List[str] | str], Field(default=None)]
+    StreetNamePostDirectional: Annotated[Optional[List[str] | str], Field(default=None)]
+    BuildingName: Annotated[Optional[List[str] | str], Field(default=None)]
+    OccupancyType: Annotated[Optional[List[str] | str], Field(default=None)]
+    OccupancyIdentifier: Annotated[Optional[List[str] | str], Field(default=None)]
+    PlaceName: Annotated[Optional[List[str] | str], Field(default=None)]
+    StateName: Annotated[Optional[List[str] | str], Field(default=None)]
+    ZipCode: Annotated[Optional[List[str] | str], Field(default=None)]
+    ZipPlus4: Annotated[Optional[List[str] | str], Field(default=None)]
+    USPSBoxType: Annotated[Optional[List[str] | str], Field(default=None)]
+    USPSBoxID: Annotated[Optional[List[str] | str], Field(default=None)]
+    USPSBoxGroupType: Annotated[Optional[List[str] | str], Field(default=None)]
+    USPSBoxGroupID: Annotated[Optional[List[str] | str], Field(default=None)]
 
 
 @dataclass

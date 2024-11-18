@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pydantic_core import PydanticCustomError
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
@@ -14,6 +15,8 @@ class VEPKeyMaker:
 
     @staticmethod
     def create_vep_keys(self, exceptions: bool = False):
+        if self.voter_registration.edr >= date(2021, 1, 1):
+            return self
         if not self.name:
             raise PydanticCustomError(
                 'missing_name',

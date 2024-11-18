@@ -10,10 +10,10 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 from pydantic import model_validator
 
-from state_voterfiles.utils.db_models.fields.person_name import PersonName
+from state_voterfiles.utils.db_models.fields.person_name import PersonName, PersonNameLink
 from state_voterfiles.utils.db_models.fields.voter_registration import VoterRegistration
 from state_voterfiles.utils.db_models.fields.address import Address, AddressLink
-from state_voterfiles.utils.db_models.fields.elections import (
+from election_utils.election_models import (
     ElectionTypeDetails, ElectionVote, ElectionVoteMethod)
 # from ..db_models.fields.district import District
 from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
@@ -24,7 +24,7 @@ from state_voterfiles.utils.db_models.fields.vendor import (
     VendorTagsToVendorToRecordLink
 )
 from state_voterfiles.utils.db_models.fields.vep_keys import VEPMatch
-from state_voterfiles.utils.db_models.fields.data_source import DataSource, DataSourceLink
+from state_voterfiles.utils.db_models.fields.data_source import DataSource
 from state_voterfiles.utils.db_models.fields.input_data import InputData
 from state_voterfiles.utils.db_models.fields.district import District, FileDistrictList
 
@@ -55,9 +55,6 @@ class RecordBaseModel(SQLModel, table=True):
         default=None,
         foreign_key=f'{VoterRegistration.__tablename__}.vuid',
         unique=True)
-    # vote_history_id: str | None = SQLModelField(
-    #     default=None,
-    #     foreign_key=f'{VotedInElection.__tablename__}.voter_id')
     district_set_id: str | None = SQLModelField(default=None, foreign_key="filedistrictlist.id")
     vep_keys_id: int | None = SQLModelField(
         default=None,
@@ -65,31 +62,32 @@ class RecordBaseModel(SQLModel, table=True):
     input_data_id: int | None = SQLModelField(
         default=None,
         foreign_key=f'{InputData.__tablename__}.id')
+    data_source_id: str | None = SQLModelField(
+        default=None,
+        foreign_key=f'datasource.file')
     name: "PersonName" = Relationship(
-        back_populates='records')
+        back_populates='records', link_model=PersonNameLink)
     voter_registration: "VoterRegistration" = Relationship(
         back_populates='records')
     address_list: list["Address"] = Relationship(
         back_populates='records',
         link_model=AddressLink)
-    # district_links: list["DistrictLink"] = Relationship(
-    #     back_populates="record")
     district_set: "FileDistrictList" = Relationship(back_populates="record_set")
     phone_numbers: list["ValidatedPhoneNumber"] = Relationship(
         back_populates='records',
         link_model=PhoneLink)
     vendor_tag_record_links: list["VendorTagsToVendorToRecordLink"] = Relationship(
         back_populates='record')
-    vote_history: list[ElectionVote] = Relationship(
+    vote_history: list["ElectionVote"] = Relationship(
         back_populates="record"
     )
     vep_keys: "VEPMatch" = Relationship(
         back_populates='records')
     input_data: "InputData" = Relationship(
         back_populates='records')
-    data_source: list["DataSource"] = Relationship(
-        back_populates='records',
-        link_model=DataSourceLink)
+    data_source: "DataSource" = Relationship(
+        back_populates='records',)
+        # link_model=DataSourceLink)
 
     @staticmethod
     def add_created_and_updated_columns():
@@ -107,30 +105,31 @@ class RecordBaseModel(SQLModel, table=True):
             query_one_or_none_ = RecordBaseModel._query_one_or_none
             _name = select(PersonName).where(PersonName.id == data.name.id)
             _voter_registration = select(VoterRegistration).where(VoterRegistration.vuid == data.voter_registration.vuid)
-            _vep_keys = select(VEPMatch).where(VEPMatch.id == data.vep_keys.id)
             _input_data = select(InputData).where(InputData.id == data.input_data.id)
-
+    
             if not (existing_name := query_one_or_none_(_name, session)):
                 session.add(data.name)
             else:
                 data.name = existing_name
-
+    
             if not (existing_voter_registration := query_one_or_none_(_voter_registration, session)):
                 session.add(data.voter_registration)
             else:
                 data.voter_registration = existing_voter_registration
-
-            if not (existing_vep_keys := query_one_or_none_(_vep_keys, session)):
-                session.add(data.vep_keys)
-            else:
-                data.vep_keys = existing_vep_keys
-
+    
+            if data.vep_keys:
+                _vep_keys = select(VEPMatch).where(VEPMatch.id == data.vep_keys.id)
+                if not (existing_vep_keys := query_one_or_none_(_vep_keys, session)):
+                    session.add(data.vep_keys)
+                else:
+                    data.vep_keys = existing_vep_keys
+    
             if not (existing_input_data := query_one_or_none_(_input_data, session)):
                 session.add(data.input_data)
             else:
                 data.input_data = existing_input_data
             session.flush()
-
+    
             _final = RecordBaseModel(
                 name=data.name,
                 voter_registration_id=data.voter_registration.id,
@@ -139,19 +138,15 @@ class RecordBaseModel(SQLModel, table=True):
                 input_data=data.input_data
             )
             session.add(_final)
+    
             for address in data.address_list:
                 _check_address = select(Address).where(Address.id == address.id)
                 if not (existing_address := query_one_or_none_(_check_address, session)):
                     session.add(address)
                 else:
-                    # if existing_address.is_mailing:
-                    #     address.is_mailing = existing_address.is_mailing
-                    # if existing_address.is_residence:
-                    #     address.is_residence = existing_address.is_residence
                     address = existing_address
-                    session.merge(address)
                 _final.address_list.append(address)
-
+    
             if data.data_source:
                 for data_source in data.data_source:
                     _check_data_source = select(DataSource).where(DataSource.file == data_source.file)
@@ -162,7 +157,7 @@ class RecordBaseModel(SQLModel, table=True):
                         session.merge(data_source)
                     _final.data_source.append(data_source)
             session.commit()
-
+    
             # Merge elections
             if data.elections:
                 for election in data.elections:
@@ -172,13 +167,13 @@ class RecordBaseModel(SQLModel, table=True):
                         session.add(election.election)
                     else:
                         election.election = existing_election
-
+    
                     if not (existing_vote_method := query_one_or_none_(_check_vote_method, session)):
                         session.add(election.vote_method)
                     else:
                         election.vote_method = existing_vote_method
                     _final.vote_history.append(election.vote_record)
-
+    
             if data.district_set:
                 data.district_set.id = data.district_set.generate_hash_key()
                 _check_district_set = select(FileDistrictList).where(FileDistrictList.id == data.district_set.id)
@@ -193,14 +188,14 @@ class RecordBaseModel(SQLModel, table=True):
                     # Add the new district set
                     session.add(data.district_set)
                 _final.district_set_id = data.district_set.id
-
+    
             if data.vendor_names:
                 _check_vendor_names = select(VendorName).where(VendorName.id == data.vendor_names.id)
                 if not (existing_vendor_names := query_one_or_none_(_check_vendor_names, session)):
                     session.add(data.vendor_names)
                 else:
                     data.vendor_names = existing_vendor_names
-
+    
                 if data.vendor_tags:
                     _check_vendor_tags = select(VendorTags).where(VendorTags.id == data.vendor_tags.id)
                     if not (existing_vendor_tags := query_one_or_none_(_check_vendor_tags, session)):

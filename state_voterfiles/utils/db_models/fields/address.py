@@ -59,10 +59,10 @@ class Address(SQLModelBase, table=True):
         self.id = self.generate_hash_key()
 
     def __hash__(self):
-        return hash(self.standardized)
+        return hash(self.id)
 
     def __eq__(self, other):
-        return self.standardized == other.standardized
+        return self.id == other.id
 
     def generate_hash_key(self) -> str:
         if not self.standardized:

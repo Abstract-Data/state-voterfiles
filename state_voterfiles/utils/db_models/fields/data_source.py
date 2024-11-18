@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from state_voterfiles.utils.db_models.model_bases import SQLModelBase
 
-
+"""
 class DataSourceLink(SQLModelBase, table=True):
     data_source_id: str | None = SQLModelField(
         default=None,
@@ -15,6 +15,7 @@ class DataSourceLink(SQLModelBase, table=True):
         default=None,
         foreign_key=f'recordbasemodel.id',
         primary_key=True)
+"""
 
 
 class DataSource(SQLModelBase, table=True):
@@ -24,8 +25,8 @@ class DataSource(SQLModelBase, table=True):
                                                 sa_column_kwargs={"server_default": func.current_date()}
                                                 )
     records: list['RecordBaseModel'] = Relationship(
-        back_populates='data_source',
-        link_model=DataSourceLink)
+        back_populates='data_source',)
+        # link_model=DataSourceLink)
 
     def __hash__(self):
         return hash(self.file)

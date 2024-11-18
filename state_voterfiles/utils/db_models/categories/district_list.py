@@ -1,10 +1,8 @@
-from typing import Set, Optional
+from typing import Optional
 
-from sqlmodel import Field as SQLModelField, JSON, SQLModel, Relationship as SQLModelRelationship, Session
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
+from sqlmodel import Field as SQLModelField, Relationship as SQLModelRelationship
 
-from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC, SQLModel
+from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC
 from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
 
 
@@ -26,7 +24,8 @@ class FileDistrictList(FileCategoryListABC, table=True):
     districts: list["District"] = SQLModelRelationship(back_populates="district_set")
     record_set: list["RecordBaseModel"] = SQLModelRelationship(back_populates="district_set")
 
-    def __post_init__(self):
+    def __init__(self, **data):
+        super().__init__(**data)
         self.id = self.generate_hash_key()
 
     def __hash__(self):

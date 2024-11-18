@@ -6,11 +6,11 @@ from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 import state_voterfiles.utils.validation.default_funcs as vfuncs
 from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-import state_voterfiles.utils.db_models.fields.elections as election_fields
-from state_voterfiles.utils.helpers.election_history_codes import (
-    VoteMethodCodes,
-    ElectionTypeCodes,
-    PoliticalPartyCodes
+from election_utils.election_models import ElectionVote, ElectionVoteMethod, ElectionTypeDetails, ElectionDataTuple
+from election_utils.election_history_codes import (
+    VoteMethodCodesBase,
+    ElectionTypeCodesBase,
+    PoliticalPartyCodesBase
 )
 
 
@@ -33,28 +33,28 @@ class StateElectionHistoryValidator:
                     )
                 _d['year'] = f'{_year: %Y}'
                 if e.startswith(p):
-                    _d['election_type'] = ElectionTypeCodes.PRIMARY
+                    _d['election_type'] = ElectionTypeCodesBase.PRIMARY
                     if v.startswith('R'):
-                        _d['political_party'] = PoliticalPartyCodes.REPUBLICAN
+                        _d['political_party'] = PoliticalPartyCodesBase.REPUBLICAN
                     elif v.startswith('D'):
-                        _d['political_party'] = PoliticalPartyCodes.DEMOCRATIC
+                        _d['political_party'] = PoliticalPartyCodesBase.DEMOCRATIC
                 elif e.startswith(g):
-                    _d['election_type'] = ElectionTypeCodes.GENERAL
+                    _d['election_type'] = ElectionTypeCodesBase.GENERAL
                 else:
                     raise PydanticCustomError(
                         'invalid_election_type',
                         f"Invalid election type: {e}"
                     )
                 if v.endswith('E'):
-                    _d['vote_method'] = VoteMethodCodes.EARLY_VOTE
+                    _d['vote_method'] = VoteMethodCodesBase.EARLY_VOTE
                 elif v.endswith('A'):
-                    _d['vote_method'] = VoteMethodCodes.ABSENTEE
+                    _d['vote_method'] = VoteMethodCodesBase.ABSENTEE
                 elif len(v) == 1:
-                    _d['vote_method'] = VoteMethodCodes.IN_PERSON
+                    _d['vote_method'] = VoteMethodCodesBase.IN_PERSON
                 else:
                     _d['vote_method'] = None
-                e_validator = election_fields.VotedInElection(**_d)
+                e_validator = ElectionVote(**_d)
                 election_list.append(e_validator)
 
-        # self.elections = election_list
+        self.elections = election_list
         return self
