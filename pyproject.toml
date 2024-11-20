@@ -33,9 +33,11 @@ shapely = "^2.0.6"
 sqlmodel = "0.0.21"
 snowflake-connector-python = "^3.12.2"
 snowflake-sqlalchemy = "^1.6.1"
-election_utils = { path = "/Users/johneakin/PyCharmProjects/election-utils", develop = true}
+election_utils = { git = "https://github.com/jreakin/jre-election-utils.git", markers = "sys_platform == 'linux'" }
 usaddress-scourgify = "^0.6.0"
 
+[tool.poetry.dev-dependencies]
+election_utils = { path = "/Users/johneakin/PyCharmProjects/election-utils", develop = true, markers = "sys_platform == 'darwin'" }
 
 [tool.poetry.group.dev.dependencies]
 hypothesis = "^6.112.2"
