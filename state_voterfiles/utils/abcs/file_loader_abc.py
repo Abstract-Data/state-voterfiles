@@ -11,11 +11,10 @@ from tqdm import tqdm
 from pydantic import FilePath
 # import logfire
 
-from state_voterfiles.utils.pydantic_models.rename_model import create_renamed_model
-from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
-from state_voterfiles.utils.abcs.create_validator_abc import CreateValidatorABC
-from state_voterfiles.utils.readers.csv_reader import read_csv
-from state_voterfiles.utils.readers.toml_reader import TomlReader
+from ..pydantic_models.rename_model import create_renamed_model
+from ..abcs.folder_reader_abc import FolderReaderABC
+from ..abcs.create_validator_abc import CreateValidatorABC
+from ...utils.readers import TomlReader, read_csv
 # from state_voterfiles.utils.logger import Logger
 
 # logfire.configure()

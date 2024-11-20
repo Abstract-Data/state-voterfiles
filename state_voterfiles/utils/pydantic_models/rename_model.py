@@ -9,12 +9,10 @@ from pydantic import (
     create_model,
 )
 
-import state_voterfiles.utils.validation.renamer_funcs as rename_func
-from state_voterfiles.utils.readers.toml_reader import TomlReader
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-from state_voterfiles.utils.abcs.toml_record_fields_abc import (
-    TomlFileFieldsABC
-)
+from ...utils.validation import renamer_funcs as rename_func
+from ..readers import TomlReader
+from .config import ValidatorConfig
+from ..abcs.toml_record_fields_abc import TomlFileFieldsABC
 
 
 class RecordRenamer(ValidatorConfig, abc.ABC):

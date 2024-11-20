@@ -1,5 +1,5 @@
-from utils.abcs.state_setup_abc import SetupStateABC
-from utils.loaders.state_loader import StateVoterFile
+from .utils.abcs.state_setup_abc import SetupStateABC
+from .utils.loaders.state_loader import StateVoterFile
 
 from sqlmodel import create_engine, SQLModel, Field, Relationship, Session, UniqueConstraint
 from typing import Optional, List

@@ -3,17 +3,17 @@ from typing import Dict, Any, Optional
 
 from sqlmodel import Field as SQLModelField
 
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
-from state_voterfiles.utils.db_models.fields.person_name import PersonName
-from state_voterfiles.utils.db_models.fields.voter_registration import VoterRegistration
-from state_voterfiles.utils.db_models.fields.address import Address, AddressLink
-from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
-from state_voterfiles.utils.db_models.fields.vendor import VendorTags, VendorName, VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
-from state_voterfiles.utils.db_models.fields.vep_keys import VEPMatch
-from state_voterfiles.utils.db_models.fields.data_source import DataSource
-from state_voterfiles.utils.db_models.fields.input_data import InputData
-from state_voterfiles.utils.db_models.categories.district_list import FileDistrictList
+from .config import ValidatorConfig
+from .rename_model import RecordRenamer
+from .fields.person_name import PersonName
+from .fields.voter_registration import VoterRegistration
+from .fields.address import Address, AddressLink
+from .fields.phone_number import ValidatedPhoneNumber, PhoneLink
+from .fields.vendor import VendorTags, VendorName, VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
+from .fields.vep_keys import VEPMatch
+from .fields.data_source import DataSource
+from .fields.input_data import InputData
+from .categories.district_list import FileDistrictList
 from election_utils.election_models import ElectionDataTuple
 
 

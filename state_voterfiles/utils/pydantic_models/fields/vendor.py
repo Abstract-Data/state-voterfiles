@@ -3,9 +3,9 @@ from typing import Dict, Any, Optional
 
 from sqlmodel import Field as SQLModelField, JSON, Relationship, SQLModel, ForeignKey
 
-from state_voterfiles.utils.abcs.validation_model_abcs import RecordListABC
-from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
-from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+from ...abcs.validation_model_abcs import RecordListABC
+from ...funcs.record_keygen import RecordKeyGenerator
+from ..model_bases import SQLModelBase
 
 
 # class VendorNameToTagLink(SQLModel):

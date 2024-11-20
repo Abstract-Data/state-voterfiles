@@ -5,13 +5,8 @@ from typing import Dict, List, Optional
 from icecream import ic
 from functools import partial
 
-from state_voterfiles.utils.readers.csv_reader import read_csv
-from state_voterfiles.utils.readers.toml_reader import TomlReader
-from state_voterfiles.utils.abcs.file_loader_abc import (
-    create_headers_list,
-    VOTERFILE_FIELD_FOLDER,
-    VOTERFILE_RECORD_FOLDER
-)
+from ..readers import TomlReader, read_csv
+from ..abcs.file_loader_abc import create_headers_list, VOTERFILE_FIELD_FOLDER, VOTERFILE_RECORD_FOLDER
 
 @dataclass
 class SetupStateABC:

@@ -7,7 +7,7 @@ from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 import state_voterfiles.utils.validation.default_helpers as helpers
 import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumber
+from state_voterfiles.utils.pydantic_models.fields.phone_number import ValidatedPhoneNumber
 
 
 @pydantic_dataclass

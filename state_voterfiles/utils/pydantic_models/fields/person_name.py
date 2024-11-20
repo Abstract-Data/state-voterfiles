@@ -7,8 +7,8 @@ from pydantic.types import PastDate
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 
-from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
-from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+from ...funcs.record_keygen import RecordKeyGenerator
+from ..model_bases import SQLModelBase
 
 
 class PersonNameLink(SQLModelBase, table=True):

@@ -5,11 +5,11 @@ from sqlmodel import Field as SQLModelField, JSON, Relationship, DateTime, Colum
 from sqlalchemy import Enum as SA_Enum
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
-from state_voterfiles.utils.db_models.categories.district_list import FileDistrictList
-from state_voterfiles.utils.abcs.validation_model_abcs import RecordListABC
-from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
-from state_voterfiles.utils.db_models.model_bases import SQLModelBase
-from state_voterfiles.utils.helpers.district_codes import (
+from ..categories.district_list import FileDistrictList
+from ...abcs.validation_model_abcs import RecordListABC
+from ...funcs.record_keygen import RecordKeyGenerator
+from ..model_bases import SQLModelBase
+from ...helpers.district_codes import (
     CityDistrictCodes,
     CountyDistrictCodes,
     StateDistrictCodes,

@@ -3,18 +3,18 @@ from functools import partial
 from dataclasses import dataclass
 from pathlib import Path
 
-from state_voterfiles.utils.readers.toml_reader import TomlReader
-from state_voterfiles.utils.abcs.folder_reader_abc import FolderReaderABC
-from state_voterfiles.utils.abcs.file_loader_abc import (
+from ..readers import TomlReader
+from ..abcs.folder_reader_abc import FolderReaderABC
+from ..abcs.file_loader_abc import (
     FileTypeConfigsABC,
     FileLoaderABC,
     VOTERFILE_FIELD_FOLDER,
     VOTERFILE_RECORD_FOLDER,
 )
-from state_voterfiles.utils.db_models.record import RecordBaseModel
-from state_voterfiles.utils.funcs.csv_export import CSVExport
-from state_voterfiles.utils.abcs.state_setup_abc import SetupStateABC
-from state_voterfiles.utils.new_create_validator import CreateValidator
+from ..pydantic_models.record import RecordBaseModel
+from ..funcs.csv_export import CSVExport
+from ..abcs.state_setup_abc import SetupStateABC
+from ..new_create_validator import CreateValidator
 
 
 class SetupState(SetupStateABC):

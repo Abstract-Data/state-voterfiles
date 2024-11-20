@@ -4,8 +4,8 @@ from datetime import datetime
 from pydantic_core import PydanticCustomError
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
-import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
+from . import default_funcs as vfuncs
+from ..pydantic_models.config import ValidatorConfig
 from election_utils.election_models import ElectionVote, ElectionVoteMethod, ElectionTypeDetails, ElectionDataTuple
 from election_utils.election_history_codes import (
     VoteMethodCodesBase,

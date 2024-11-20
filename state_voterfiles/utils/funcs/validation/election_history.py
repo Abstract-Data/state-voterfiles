@@ -1,6 +1,6 @@
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
-from state_voterfiles.utils.validation.texas_elections import TexasElectionHistoryValidator
+from ...validation.texas_elections import TexasElectionHistoryValidator
 
 
 @pydantic_dataclass

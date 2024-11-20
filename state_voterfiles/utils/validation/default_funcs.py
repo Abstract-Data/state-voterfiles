@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Union
 from pydantic_core import PydanticCustomError
 from pydantic import AliasChoices, BaseModel
 import re
+
 from ..funcs.validation.address import AddressTypeList
 
 

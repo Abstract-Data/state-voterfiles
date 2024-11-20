@@ -7,7 +7,7 @@ from pydantic import Field as PydanticField
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from icecream import ic
 
-import state_voterfiles.utils.validation.default_funcs as vfuncs
+from . import default_funcs as vfuncs
 from election_utils.election_models import ElectionVoteMethod, ElectionTypeDetails, ElectionVote, ElectionDataTuple
 from election_utils.election_history_codes import (
     VoteMethodCodesBase,

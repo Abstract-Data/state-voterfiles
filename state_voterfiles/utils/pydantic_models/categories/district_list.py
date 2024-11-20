@@ -2,8 +2,8 @@ from typing import Optional
 
 from sqlmodel import Field as SQLModelField, Relationship as SQLModelRelationship
 
-from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC
-from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
+from ...abcs.validation_model_abcs import FileCategoryListABC
+from ...funcs.record_keygen import RecordKeyGenerator
 
 
 

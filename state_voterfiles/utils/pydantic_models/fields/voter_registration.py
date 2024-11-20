@@ -4,8 +4,8 @@ from datetime import date, datetime
 from sqlmodel import Field as SQLModelField, JSON, Relationship, Column, DateTime, func, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
-from state_voterfiles.utils.funcs.record_keygen import RecordKeyGenerator
-from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+from ...funcs.record_keygen import RecordKeyGenerator
+from ..model_bases import SQLModelBase
 # from state_voterfiles.utils.db_models.fields.elections import VoterAndElectionLink
 
 

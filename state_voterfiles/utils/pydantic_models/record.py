@@ -9,24 +9,18 @@ from sqlalchemy.future import select as async_select
 from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
 from pydantic import model_validator
+from pydantic.alias_generators import to_snake
 
-from state_voterfiles.utils.db_models.fields.person_name import PersonName, PersonNameLink
-from state_voterfiles.utils.db_models.fields.voter_registration import VoterRegistration
-from state_voterfiles.utils.db_models.fields.address import Address, AddressLink
-from election_utils.election_models import (
-    ElectionTypeDetails, ElectionVote, ElectionVoteMethod)
-# from ..db_models.fields.district import District
-from state_voterfiles.utils.db_models.fields.phone_number import ValidatedPhoneNumber, PhoneLink
-from state_voterfiles.utils.db_models.fields.vendor import (
-    VendorTags,
-    VendorName,
-    VendorTagsToVendorLink,
-    VendorTagsToVendorToRecordLink
-)
-from state_voterfiles.utils.db_models.fields.vep_keys import VEPMatch
-from state_voterfiles.utils.db_models.fields.data_source import DataSource
-from state_voterfiles.utils.db_models.fields.input_data import InputData
-from state_voterfiles.utils.db_models.fields.district import District, FileDistrictList
+from .fields.person_name import PersonName, PersonNameLink
+from .fields.voter_registration import VoterRegistration
+from .fields.address import Address, AddressLink
+from election_utils.election_models import ElectionTypeDetails, ElectionVote, ElectionVoteMethod
+from .fields.phone_number import ValidatedPhoneNumber, PhoneLink
+from .fields.vendor import VendorTags, VendorName, VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
+from .fields.vep_keys import VEPMatch
+from .fields.data_source import DataSource
+from .fields.input_data import InputData
+from .fields.district import District, FileDistrictList
 
 # from ..db_models.categories.district_list import FileDistrictList
 
@@ -43,6 +37,10 @@ from state_voterfiles.utils.db_models.fields.district import District, FileDistr
 MODEL_LIST = [Address, PersonName, VoterRegistration, ValidatedPhoneNumber, VendorName, VendorTags, ElectionTypeDetails,
               ElectionVoteMethod, ElectionVote, DataSource, InputData, VEPMatch, District, ]
 
+def lower_snake(s: str) -> str:
+    return to_snake(s).lower()
+
+sn = lower_snake
 
 class RecordBaseModel(SQLModel, table=True):
     id: int | None = SQLModelField(
@@ -206,6 +204,38 @@ class RecordBaseModel(SQLModel, table=True):
                     _final.vendor_tag_record_links.append(data.vendor_tags)
             session.commit()
 
+
+    def flatten(self):
+        data = {
+            'first_name': self.name.first,
+            'last_name': self.name.last,
+            'voter_id': self.voter_registration.vuid,
+            'dob': self.name.dob,
+        }
+
+        for address in self.address_list:
+            data[sn(f"{address.address_type}_std")] = address.standardized
+            data[sn(f"{address.address_type}_city")] = address.city
+            data[sn(f"{address.address_type}_state")] = address.state
+            data[sn(f"{address.address_type}_zip")] = address.zip5
+
+        if self.district_set:
+            for district in self.district_set.districts:
+                data[sn(f"{district.type}_{district.name}")] = district.number
+
+        if self.phone_numbers:
+            for phone in self.phone_numbers:
+                data[sn(f"{phone.phone_type}_phone")] = phone.phone
+
+        if self.vote_history:
+            for election in self.vote_history:
+                data[sn(f"{election.year}{election.election_type}_method")] = next(
+                    (x.vote_method for x in self.vote_history if x.election == election), None)
+                if election.party:
+                    data[sn(f"{election.year}{election.election_type}_party")] = next(
+                        (x.party for x in self.vote_history if x.election == election), None)
+
+        return data
 
     # @staticmethod
     # async def async_set_relationships(data: "PreValidationCleanUp", engine: AsyncEngine):

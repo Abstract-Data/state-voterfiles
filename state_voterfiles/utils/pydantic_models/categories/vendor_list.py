@@ -1,7 +1,7 @@
 from sqlmodel import Field as SQLModelField
 
-from state_voterfiles.utils.abcs.validation_model_abcs import FileCategoryListABC
-from state_voterfiles.utils.db_models.fields.vendor import VendorName
+from ...abcs.validation_model_abcs import FileCategoryListABC
+from ..fields.vendor import VendorName
 
 
 class FileVendorNameList(FileCategoryListABC):

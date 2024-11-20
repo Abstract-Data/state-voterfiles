@@ -14,8 +14,6 @@ import pandas as pd
 from pydantic import ValidationError, BaseModel, Field as PydanticField
 from tqdm import tqdm
 
-# from state_voterfiles.utils.logger import Logger
-# from .db_models.categories.election_list import FileElectionList
 from .pydantic_models.cleanup_model import (
     PreValidationCleanUp,
     Address,
@@ -26,8 +24,7 @@ from .pydantic_models.cleanup_model import (
     RecordRenamer,
     ValidatorConfig
 )
-from .db_models.record import RecordBaseModel
-# from .db_models.fields import District, Address, VendorName, ElectionTypeDetails
+from .pydantic_models.record import RecordBaseModel
 
 # Define type aliases for readability
 PassedRecords = Iterable[Type[ValidatorConfig]]

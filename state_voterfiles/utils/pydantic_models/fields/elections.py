@@ -6,12 +6,8 @@ from pydantic.dataclasses import dataclass as pydantic_dataclass
 from sqlalchemy import Enum as SA_Enum
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
-from state_voterfiles.utils.db_models.model_bases import SQLModelBase
-from election_utils.election_history_codes import (
-    ElectionTypeCodesBase,
-    VoteMethodCodesBase,
-    PoliticalPartyCodesBase
-)
+from ..model_bases import SQLModelBase
+from election_utils.election_history_codes import ElectionTypeCodesBase, VoteMethodCodesBase, PoliticalPartyCodesBase
 #
 # from election_utils.election_models import (
 #     ElectionTypeDetailsBase,

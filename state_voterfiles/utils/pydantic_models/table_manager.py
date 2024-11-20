@@ -4,12 +4,12 @@ from sqlmodel import MetaData, SQLModel, Session, text, select
 from sqlalchemy import Engine
 from sqlalchemy.orm import joinedload
 
-from state_voterfiles.utils.db_models.record import RecordBaseModel
-from state_voterfiles.utils.db_models.fields.district import District
+from .record import RecordBaseModel
+from .fields.district import District
 # from state_voterfiles.utils.db_models.fields.elections import ElectionLinkToRecord, ElectionLink, ElectionTypeDetails, VotedInElection
-from state_voterfiles.utils.db_models.fields.address import Address, AddressLink
-from state_voterfiles.utils.db_models.fields.voter_registration import VoterRegistration
-from state_voterfiles.utils.db_models.fields.phone_number import PhoneLink, ValidatedPhoneNumber
+from .fields.address import Address, AddressLink
+from .fields.voter_registration import VoterRegistration
+from .fields.phone_number import PhoneLink, ValidatedPhoneNumber
 
 
 @pydantic_dataclass(config={"arbitrary_types_allowed": True})

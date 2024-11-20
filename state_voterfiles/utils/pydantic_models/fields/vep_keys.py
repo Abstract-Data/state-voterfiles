@@ -1,6 +1,6 @@
 from sqlmodel import Field as SQLModelField, Relationship
 
-from state_voterfiles.utils.db_models.model_bases import SQLModelBase
+from ..model_bases import SQLModelBase
 
 
 class VEPMatch(SQLModelBase, table=True):

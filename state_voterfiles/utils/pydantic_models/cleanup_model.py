@@ -8,22 +8,23 @@ from rapidfuzz import fuzz
 
 from pydantic import model_validator
 from pydantic_core import PydanticCustomError
+from sqlmodel import Field as SQLModelField
 
-import state_voterfiles.utils.validation.default_funcs as vfuncs
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
-from state_voterfiles.utils.db_models.validator_record import *
-from state_voterfiles.utils.db_models.fields.district import District
+from ..validation import default_funcs as vfuncs
+from .config import ValidatorConfig
+from .validator_record import *
+from .fields.district import District
 from election_utils.election_models import ElectionVote
-from state_voterfiles.utils.helpers.district_codes import DistrictCodes
-from state_voterfiles.utils.funcs.validation.address import (
+from ..helpers.district_codes import DistrictCodes
+from ..funcs.validation import (
+    PhoneNumberValidationFuncs, 
+    VEPKeyMaker, 
+    DateValidators, 
+    ElectionValidationFuncs,
     AddressValidationFuncs,
-    AddressTypeList,
+    AddressTypeList, 
     AddressType
 )
-from state_voterfiles.utils.funcs.validation.phone import PhoneNumberValidationFuncs
-from state_voterfiles.utils.funcs.validation.vep_keys import VEPKeyMaker
-from state_voterfiles.utils.funcs.validation.dates import DateValidators
-from state_voterfiles.utils.funcs.validation.election_history import ElectionValidationFuncs
 
 ic.enable()
 ic.configureOutput(prefix='PreValidationCleanUp| ', includeContext=True)

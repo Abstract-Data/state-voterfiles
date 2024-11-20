@@ -4,13 +4,14 @@ from typing import Tuple, Iterable, Dict, Any, Optional, Generator
 from sqlmodel import SQLModel, Relationship, Field as SQLModelField, Session, select
 from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
-from state_voterfiles.utils.abcs.create_validator_abc import (
+
+from .abcs.create_validator_abc import (
     CreateValidatorABC,
     RunValidationOutput,
     ErrorDetails
 )
-from state_voterfiles.utils.pydantic_models.rename_model import RecordRenamer
-from state_voterfiles.utils.pydantic_models.cleanup_model import (
+from .pydantic_models.rename_model import RecordRenamer
+from .pydantic_models.cleanup_model import (
     PreValidationCleanUp,
     PersonName,
     VendorName,
@@ -27,8 +28,8 @@ from state_voterfiles.utils.pydantic_models.cleanup_model import (
     VEPMatch,
     PhoneLink
 )
-from state_voterfiles.utils.db_models.record import RecordBaseModel
-from state_voterfiles.utils.pydantic_models.table_manager import TableManager
+from .pydantic_models.record import RecordBaseModel
+from .pydantic_models.table_manager import TableManager
 
 
 class RecordRenameValidator(CreateValidatorABC):

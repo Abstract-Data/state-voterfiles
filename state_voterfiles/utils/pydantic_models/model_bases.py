@@ -1,7 +1,8 @@
 import abc
 from sqlmodel import SQLModel
-from state_voterfiles.utils.pydantic_models.config import ValidatorConfig
 from pydantic import ConfigDict
+
+from .config import ValidatorConfig
 
 
 class ValidatorBaseModel(ValidatorConfig):
