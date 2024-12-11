@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/funcs/csv_reader/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/funcs/toml_reader_doc/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/funcs/voter_info_doc/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/state-fields/ohio-fields/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/state-fields/texas-fields/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/validators/config/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+    <url>
+         <loc>https://abstract-data.github.io/state-voterfiles/validators/record_renamer/</loc>
+         <lastmod>2024-12-11</lastmod>
+    </url>
+</urlset>
