@@ -14,7 +14,7 @@ from pydantic.alias_generators import to_snake
 from .fields.person_name import PersonName, PersonNameLink
 from .fields.voter_registration import VoterRegistration
 from .fields.address import Address, AddressLink
-from election_utils.election_models import ElectionTypeDetails, ElectionVote, ElectionVoteMethod
+from election_utils.election_models import ElectionTypeDetails, ElectionVote, ElectionVoteMethod, ElectionTurnoutCalculator
 from .fields.phone_number import ValidatedPhoneNumber, PhoneLink
 from .fields.vendor import VendorTags, VendorName, VendorTagsToVendorLink, VendorTagsToVendorToRecordLink
 from .fields.vep_keys import VEPMatch
@@ -79,6 +79,7 @@ class RecordBaseModel(SQLModel, table=True):
     vote_history: list["ElectionVote"] = Relationship(
         back_populates="record"
     )
+    election_scores: "ElectionTurnoutCalculator" = SQLModelField(default_factory=ElectionTurnoutCalculator, sa_type=JSON)
     vep_keys: "VEPMatch" = Relationship(
         back_populates='records')
     input_data: "InputData" = Relationship(

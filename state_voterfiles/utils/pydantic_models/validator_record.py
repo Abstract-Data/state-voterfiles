@@ -14,7 +14,7 @@ from .fields.vep_keys import VEPMatch
 from .fields.data_source import DataSource
 from .fields.input_data import InputData
 from .categories.district_list import FileDistrictList
-from election_utils.election_models import ElectionDataTuple
+from election_utils.election_models import ElectionDataTuple, ElectionTurnoutCalculator
 
 
 class CleanUpBaseModel(ValidatorConfig):
@@ -34,6 +34,7 @@ class CleanUpBaseModel(ValidatorConfig):
     vendor_tags: list[VendorTags] = SQLModelField(default_factory=list)
     vendor_record: list[VendorTagsToVendorToRecordLink] = SQLModelField(default_factory=list)
     elections: list[ElectionDataTuple] = SQLModelField(default_factory=list)
+    election_scores: ElectionTurnoutCalculator = SQLModelField(default_factory=ElectionTurnoutCalculator)
     corrected_errors: dict[str, Any] = SQLModelField(default_factory=dict)
     data_source: list[DataSource] = SQLModelField(default_factory=list)
     input_data: Optional[InputData] = SQLModelField(default=None)

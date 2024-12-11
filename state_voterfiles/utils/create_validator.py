@@ -12,7 +12,7 @@ from contextlib import ExitStack
 import logfire
 import pandas as pd
 from pydantic import ValidationError, BaseModel, Field as PydanticField
-from tqdm import tqdm
+from rich.progress import Progress
 
 from .pydantic_models.cleanup_model import (
     PreValidationCleanUp,
@@ -269,11 +269,12 @@ class CreateValidator:
                 ctx = logfire.span(
                     f"Getting {result_type} {self.state_name[1]} records for {self.state_name[0].title()}...")
                 stack.enter_context(ctx)
-                pbar = tqdm(desc=f"Generating {result_type} records", leave=True)
-                for status, record in _validation_gen[self._iter_count]:
-                    if status == result_type:
-                        pbar.update(1)
-                        yield record
+                with Progress() as pbar:
+                    task = pbar.add_task(f"Generating {result_type} records")
+                    for status, record in _validation_gen[self._iter_count]:
+                        if status == result_type:
+                            yield record
+                            pbar.update(task, advance=1)
 
         self.valid = get_records("valid")
         self.invalid = get_records("invalid")

@@ -26,7 +26,6 @@ from ..funcs.validation import (
     AddressType
 )
 
-ic.enable()
 ic.configureOutput(prefix='PreValidationCleanUp| ', includeContext=True)
 
 

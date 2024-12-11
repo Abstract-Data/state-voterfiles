@@ -10,7 +10,6 @@ packages = [{include = "state_voterfiles"}]
 python = ">=3.10"
 tomli = ">=2.0.1,<2.1.0"
 pandas = "^2.2.2"
-pydantic = "^2.9.2"
 sqlalchemy = "^2.0.35"
 python-dotenv = "^1.0.0"
 tqdm = "^4.65.0"
@@ -18,8 +17,6 @@ zipcodes = ">=1.2.0,<1.3.0"
 psycopg2 = "^2.9.6"
 orjson = "^3.8.11"
 requests = "^2.30.0"
-icecream = "^2.1.3"
-pydantic-extra-types = "^2.9.0"
 logfire = "^2.3.0"
 chardet = "^5.2.0"
 usaddress = "^0.5.10"
@@ -30,10 +27,12 @@ geopy = "^2.4.1"
 tenacity =  ">=8.1.0,<9"
 geopandas = "^1.0.1"
 shapely = "^2.0.6"
-sqlmodel = "0.0.21"
 snowflake-connector-python = "^3.12.2"
 snowflake-sqlalchemy = "^1.6.1"
-election_utils = { git = "https://github.com/jreakin/jre-election-utils.git", markers = "sys_platform == 'linux'" }
+election_utils = [
+    { path = "/Users/johneakin/PyCharmProjects/election-utils", develop = true, markers = "sys_platform == 'darwin'" },
+    { git = "https://github.com/jreakin/jre-election-utils.git", markers = "sys_platform == 'linux'" }
+]
 usaddress-scourgify = "^0.6.0"
 
 [tool.poetry.dev-dependencies]

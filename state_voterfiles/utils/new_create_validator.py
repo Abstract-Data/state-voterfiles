@@ -367,6 +367,10 @@ class CreateRecords:
 
     def _create_non_db_record(self, record: PreValidationCleanUp) -> RecordBaseModel:
         return RecordBaseModel(
+            name_id=record.name.id,
+            voter_registration_id=record.voter_registration.vuid,
+            district_set_id=record.district_set.id,
+            input_data_id=record.input_data.id,
             name=record.name,
             voter_registration=record.voter_registration,
             district_set=record.district_set,
@@ -376,6 +380,7 @@ class CreateRecords:
             input_data=record.input_data,
             vep_keys=record.vep_keys,
             vote_history=[x.vote_record for x in record.elections],
+            election_scores=record.election_scores
         )
 
     def create_records(self, records: Iterable[PreValidationCleanUp]) -> Generator[RecordBaseModel, None, None]:

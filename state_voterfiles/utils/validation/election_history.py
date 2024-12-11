@@ -34,10 +34,11 @@ class StateElectionHistoryValidator:
                 _d['year'] = f'{_year: %Y}'
                 if e.startswith(p):
                     _d['election_type'] = ElectionTypeCodesBase.PRIMARY
-                    if v.startswith('R'):
-                        _d['political_party'] = PoliticalPartyCodesBase.REPUBLICAN
-                    elif v.startswith('D'):
-                        _d['political_party'] = PoliticalPartyCodesBase.DEMOCRATIC
+                    if v: 
+                        if v.startswith('R'):
+                            _d['political_party'] = PoliticalPartyCodesBase.REPUBLICAN
+                        elif v.startswith('D'):
+                            _d['political_party'] = PoliticalPartyCodesBase.DEMOCRATIC
                 elif e.startswith(g):
                     _d['election_type'] = ElectionTypeCodesBase.GENERAL
                 else:
@@ -45,15 +46,16 @@ class StateElectionHistoryValidator:
                         'invalid_election_type',
                         f"Invalid election type: {e}"
                     )
-                if v.endswith('E'):
-                    _d['vote_method'] = VoteMethodCodesBase.EARLY_VOTE
-                elif v.endswith('A'):
-                    _d['vote_method'] = VoteMethodCodesBase.ABSENTEE
-                elif len(v) == 1:
-                    _d['vote_method'] = VoteMethodCodesBase.IN_PERSON
-                else:
-                    _d['vote_method'] = None
-                e_validator = ElectionVote(**_d)
+                if v:
+                    if v.endswith('E'):
+                        _d['vote_method'] = VoteMethodCodesBase.EARLY_VOTE
+                    elif v.endswith('A'):
+                        _d['vote_method'] = VoteMethodCodesBase.ABSENTEE
+                    elif len(v) == 1:
+                        _d['vote_method'] = VoteMethodCodesBase.IN_PERSON
+                    else:
+                        _d['vote_method'] = None
+                    e_validator = ElectionVote(**_d)
                 election_list.append(e_validator)
 
         self.elections = election_list

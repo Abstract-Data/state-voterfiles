@@ -7,7 +7,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import field, dataclass
 
-from tqdm import tqdm
+from rich.progress import track
 from pydantic import FilePath
 # import logfire
 
@@ -22,9 +22,10 @@ from ...utils.readers import TomlReader, read_csv
 TEMP_DATA = TomlReader(file=Path(__file__).parents[2] / "folder_paths.toml")
 
 USE_VEP_FILES = True
+
 PACKAGE_DATA_FOLDER = Path(__file__).parents[3] / "data"
 
-DATA_FOLDER = Path("/Users/johneakin/PyCharmProjects/vep-2024/data") if USE_VEP_FILES else PACKAGE_DATA_FOLDER
+DATA_FOLDER = Path(__file__).parent.parent.parent.parent / 'data' if USE_VEP_FILES else PACKAGE_DATA_FOLDER
 
 FIELD_FOLDER = Path(__file__).parents[2] / "field_references" / "states"
 
@@ -94,7 +95,7 @@ def read_all_files_func(
 
 
 def read_one_file_func(folder: Path, **kwargs) -> Generator[Dict, None, None]:
-    for record in tqdm(read_csv(folder, **kwargs), desc=f"Reading {folder.name}", unit=" records"):
+    for record in track(read_csv(folder, **kwargs), description=f"Reading {folder.name}"):
         yield record
 
 
@@ -245,7 +246,11 @@ class FileLoaderABC(abc.ABC):
         self._read_all_files = False
         return self
 
-    def read(self, file_path: Path = None, uppercase: bool = True, lowercase: bool = None) -> Any:
+    def read(self, 
+             file_path: Path = None, 
+             uppercase: bool = True, 
+             lowercase: bool = None
+             ) -> Dict[str, Any] | Generator[Dict[str, Any], None, None]:
         """Reads the voter file and returns a data reader instance."""
         _kwargs = {}
         # if self.config.folder and self.config.folder.newest_file.suffix == '.txt':
@@ -256,8 +261,7 @@ class FileLoaderABC(abc.ABC):
         if file_path:
             # logfire.info(f"Reading single file: {file_path.name}")
             # with self.context_manager_stack(self.context_managers):
-            data = read_one_file_func(folder=file_path, **_kwargs) if _kwargs else read_one_file_func(folder=file_path)
-            return data
+            return read_one_file_func(folder=file_path, **_kwargs) if _kwargs else read_one_file_func(folder=file_path)
 
         elif self._read_all_files:
             # logfire.info(f"Reading all files for {self.state.title()}")

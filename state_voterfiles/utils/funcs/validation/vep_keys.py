@@ -12,11 +12,16 @@ from state_voterfiles.utils.pydantic_models.fields.vep_keys import VEPMatch
 
 @pydantic_dataclass
 class VEPKeyMaker:
+    
+    @staticmethod
+    def _check_for_registration_date(self, exceptions: bool = False):
+        if self.voter_registration and (_edr := self.voter_registration.edr):
+            if _edr >= date(2021, 1, 1):
+                return str(_edr.strftime('%Y%m%d'))
+        return None
 
     @staticmethod
-    def create_vep_keys(self, exceptions: bool = False):
-        if self.voter_registration.edr >= date(2021, 1, 1):
-            return self
+    def _check_for_name(self, exceptions: bool = False):
         if not self.name:
             raise PydanticCustomError(
                 'missing_name',
@@ -44,7 +49,10 @@ class VEPKeyMaker:
                     'method_name': 'create_vep_keys'
                 }
             )
-
+        return first_.strip(), last_.strip()
+    
+    @staticmethod
+    def _check_for_dob(self, exceptions: bool = False):
         if not self.name.dob:
             if exceptions:
                 raise PydanticCustomError(
@@ -57,10 +65,11 @@ class VEPKeyMaker:
                     }
                 )
             else:
-                _dob = None
-        else:
-            _dob = str(self.name.dob).replace('-', '')
-
+                return None
+        return str(self.name.dob.strftime('%Y%m%d'))
+    
+    @staticmethod
+    def _check_for_address(self, exceptions: bool = False):
         if not any([x for x in self.address_list if x.address_type in AddressTypeList]):
             return self
 
@@ -73,9 +82,79 @@ class VEPKeyMaker:
         else:
             _zip5, _zip4, _standardized_address = None, None, None
             _uses_mailzip = None
+        
+        return _zip5, _zip4, _standardized_address, _uses_mailzip
+            
+    @staticmethod
+    def create_vep_keys(self, exceptions: bool = False):
+        _voter_registration_date = VEPKeyMaker._check_for_registration_date(self, exceptions)
+        _first_name, _last_name = VEPKeyMaker._check_for_name(self, exceptions)
+        _dob = VEPKeyMaker._check_for_dob(self, exceptions)
+        _zip5, _zip4, _standardized_address, _uses_mailzip = VEPKeyMaker._check_for_address(self, exceptions)
+        
+        # if self.voter_registration and (_edr := self.voter_registration.edr):
+        #     if _edr >= date(2021, 1, 1):
+        #         return self
+            
+        # if not self.name:
+        #     raise PydanticCustomError(
+        #         'missing_name',
+        #         'Missing name details. Unable to generate a strong key to match with',
+        #         {
+        #             'validator_model': self.__class__.__name__,
+        #             'method_type': 'model_validator',
+        #             'method_name': 'create_vep_keys'
+        #         }
+        #     )
+        # elif not all([first_ := self.name.first, last_ := self.name.last]):
+        #     if not first_:
+        #         missing_name = 'first'
+        #     elif not last_:
+        #         missing_name = 'last'
+        #     else:
+        #         missing_name = 'first and last'
 
-        name_ = self.name
-        _first_name, _last_name, _dob = name_.first, name_.last, name_.dob
+        #     raise PydanticCustomError(
+        #         f'missing_{missing_name.replace(' ', '_')}_name',
+        #         f'Missing {missing_name} name. Unable to generate a strong key to match with',
+        #         {
+        #             'validator_model': self.__class__.__name__,
+        #             'method_type': 'model_validator',
+        #             'method_name': 'create_vep_keys'
+        #         }
+        #     )
+
+        # if not self.name.dob:
+        #     if exceptions:
+        #         raise PydanticCustomError(
+        #             'missing_dob',
+        #             'Missing date of birth. Unable to generate a strong key to match with',
+        #             {
+        #                 'validator_model': self.__class__.__name__,
+        #                 'method_type': 'model_validator',
+        #                 'method_name': 'create_vep_keys'
+        #             }
+        #         )
+        #     else:
+        #         _dob = None
+        # else:
+        #     _dob = str(self.name.dob).replace('-', '')
+
+        # if not any([x for x in self.address_list if x.address_type in AddressTypeList]):
+        #     return self
+
+        # if addr := next((x for x in self.address_list if x.address_type == AddressType.RESIDENCE), None):
+        #     _zip5, _zip4, _standardized_address = addr.zip5, addr.zip4, addr.standardized
+        #     _uses_mailzip = None
+        # elif addr := next((x for x in self.address_list if x.address_type == AddressType.MAIL), None):
+        #     _zip5, _zip4, _standardized_address = addr.zip5, addr.zip4, addr.standardized
+        #     _uses_mailzip = True
+        # else:
+        #     _zip5, _zip4, _standardized_address = None, None, None
+        #     _uses_mailzip = None
+
+        # name_ = self.name
+        # _first_name, _last_name, _dob = name_.first, name_.last, name_.dob
 
         vep_key_dict = {}
 

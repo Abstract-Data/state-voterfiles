@@ -15,7 +15,7 @@ from .pydantic_models.fields.phone_number import ValidatedPhoneNumber
 from .pydantic_models.fields.vendor import VendorTags, VendorName
 from .pydantic_models.fields.vep_keys import VEPMatch
 from .pydantic_models.fields.data_source import DataSource
-from .pydantic_models.fields.elections import VotedInElection, ElectionTypeDetails
+from .pydantic_models.fields.x_elections import VotedInElection, ElectionTypeDetails
 from .pydantic_models.fields.input_data import InputData
 from .pydantic_models.fields.address import Address
 from .pydantic_models.record import RecordBaseModel

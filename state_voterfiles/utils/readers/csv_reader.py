@@ -9,9 +9,7 @@ from collections import Counter
 import string
 # import logfire
 
-
-ENABLE_LOGGING = False
-
+ic.disable()
 
 # @logfire.no_auto_trace
 def clean_filename(filename: str, max_length: int = 63) -> str:
@@ -47,7 +45,7 @@ def detect_file_encoding(file: Path):
     Returns:
         str: The detected encoding of the file.
     """
-    ic.configureOutput(prefix='detect_file_encoding()|') if ENABLE_LOGGING else ic.disable()
+    ic.configureOutput(prefix='detect_file_encoding()|')
     _multiplier = 1
     confidence = 0
     _file_size_mb = file.stat().st_size / 1024 / 1024
@@ -66,11 +64,11 @@ def detect_file_encoding(file: Path):
                f"Detected encoding: {result['encoding']} \r"
                f"Confidence level:  {confidence:.2%}. \r"
                f"File size read:    {total_read / 1024 / 1024:.2f} MB. ({total_read / (_file_size_mb * 1024 * 1024):.2%}) \r"
-               f"Continuing to analyze the file.") if ENABLE_LOGGING else ic.disable()
+               f"Continuing to analyze the file.")
             read_size *= _multiplier  # Increase read size for the next iteration
             _multiplier *= 10  # Exponentially increase the multiplier
 
-        ic(f"Detected encoding: {result['encoding']}") if ENABLE_LOGGING else ic.disable()
+        ic(f"Detected encoding: {result['encoding']}")
     return result['encoding']
 
 
@@ -86,7 +84,7 @@ def detect_delimiter(file_path: Path, num_lines: int = 10) -> str:
     Returns:
         str: The detected delimiter.
     """
-    ic.configureOutput(prefix='detect_delimiter()|') if ENABLE_LOGGING else ic.disable()
+    ic.configureOutput(prefix='detect_delimiter()|')
     common_delimiters = [',', '\t', ';', '|']
     delimiter_counts = {delimiter: 0 for delimiter in common_delimiters}
 
@@ -102,7 +100,7 @@ def detect_delimiter(file_path: Path, num_lines: int = 10) -> str:
             delimiter_counts[delimiter] += line_counts[delimiter]
 
     detected_delimiter = max(delimiter_counts, key=delimiter_counts.get)
-    ic(f"Detected delimiter for {file_path.name}: {detected_delimiter}") if ENABLE_LOGGING else ic.disable()
+    ic(f"Detected delimiter for {file_path.name}: {detected_delimiter}")
     return detected_delimiter
 
 
@@ -221,7 +219,7 @@ def read_csv(file: Union[str, Path], **kwargs) -> Generator[Dict[str, Any], None
     Yields:
         Dict[str, Any]: Each row in the CSV file as a dictionary with additional metadata.
     """
-    ic.configureOutput(prefix='read_csv()|') if ENABLE_LOGGING else ic.disable()
+    ic.configureOutput(prefix='read_csv()|')
     if isinstance(file, str):
         file = Path(file)
 

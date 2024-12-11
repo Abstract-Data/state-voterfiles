@@ -8,7 +8,7 @@ from pydantic.dataclasses import dataclass as pydantic_dataclass
 from icecream import ic
 
 from . import default_funcs as vfuncs
-from election_utils.election_models import ElectionVoteMethod, ElectionTypeDetails, ElectionVote, ElectionDataTuple
+from election_utils.election_models import ElectionVoteMethod, ElectionTypeDetails, ElectionVote, ElectionDataTuple, ElectionTurnoutCalculator
 from election_utils.election_history_codes import (
     VoteMethodCodesBase,
     ElectionTypeCodesBase,
@@ -41,12 +41,13 @@ class TexasElectionHistoryValidator:
                 _d['year'] = f'{_year: %Y}'
                 if e.startswith(p):
                     _d['election_type'] = ElectionTypeCodesBase.PRIMARY
-                    if v.startswith('R'):
-                        _d['party'] = PoliticalPartyCodesBase.REPUBLICAN
-                    elif v.startswith('D'):
-                        _d['party'] = PoliticalPartyCodesBase.DEMOCRATIC
-                    else:
-                        _d['party'] = PoliticalPartyCodesBase.INDEPENDENT
+                    if v:
+                        if v.startswith('R'):
+                            _d['party'] = PoliticalPartyCodesBase.REPUBLICAN
+                        elif v.startswith('D'):
+                            _d['party'] = PoliticalPartyCodesBase.DEMOCRATIC
+                        else:
+                            _d['party'] = PoliticalPartyCodesBase.INDEPENDENT
 
                 elif e.startswith(g):
                     _d['election_type'] = ElectionTypeCodesBase.GENERAL
@@ -56,14 +57,15 @@ class TexasElectionHistoryValidator:
                         f"Invalid election type: {e}"
                     )
 
-                if v.endswith('E'):
-                    _d['vote_method'] = VoteMethodCodesBase.EARLY_VOTE
-                elif v.endswith('A'):
-                    _d['vote_method'] = VoteMethodCodesBase.ABSENTEE
-                elif v.endswith(('V', 'D', ''R'')):
-                    _d['vote_method'] = VoteMethodCodesBase.IN_PERSON
-                else:
-                    _d['vote_method'] = None
+                if v:
+                    if v.endswith('E'):
+                        _d['vote_method'] = VoteMethodCodesBase.EARLY_VOTE
+                    elif v.endswith('A'):
+                        _d['vote_method'] = VoteMethodCodesBase.ABSENTEE
+                    elif v.endswith(('V', 'D', ''R'')):
+                        _d['vote_method'] = VoteMethodCodesBase.IN_PERSON
+                    else:
+                        _d['vote_method'] = None
 
                 _d['state'] = 'TX'
                 e_details = ElectionTypeDetails(**_d)
@@ -80,6 +82,9 @@ class TexasElectionHistoryValidator:
                     )
                 )
         self.elections = election_list
+        _election_score = ElectionTurnoutCalculator()
+        _election_score.calculate_scores(election_list)
+        self.election_scores = _election_score
         return self
 
     # @staticmethod
