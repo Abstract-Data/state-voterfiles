@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 import asyncio
 
-from ...utils.pydantic_models.record import (
+from vep_validation_tools.pydantic_models.record import (
     RecordBaseModel,
     PersonName,
     VoterRegistration,
@@ -18,7 +18,7 @@ from ...utils.pydantic_models.record import (
     PhoneLink,
     ElectionVote,
 )
-from ...utils.pydantic_models.cleanup_model import PreValidationCleanUp
+from vep_validation_tools.pydantic_models.cleanup_model import PreValidationCleanUp
 
 
 T = TypeVar('T', bound=SQLModel)

@@ -14,7 +14,7 @@ import pandas as pd
 from pydantic import ValidationError, BaseModel, Field as PydanticField
 from rich.progress import Progress
 
-from .pydantic_models.cleanup_model import (
+from vep_validation_tools.pydantic_models.cleanup_model import (
     PreValidationCleanUp,
     Address,
     District,
@@ -24,7 +24,7 @@ from .pydantic_models.cleanup_model import (
     RecordRenamer,
     ValidatorConfig
 )
-from .pydantic_models.record import RecordBaseModel
+from vep_validation_tools.pydantic_models.record import RecordBaseModel
 
 # Define type aliases for readability
 PassedRecords = Iterable[Type[ValidatorConfig]]

@@ -3,7 +3,6 @@ from functools import partial
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..readers import TomlReader
 from ..abcs.folder_reader_abc import FolderReaderABC
 from ..abcs.file_loader_abc import (
     FileTypeConfigsABC,
@@ -11,11 +10,12 @@ from ..abcs.file_loader_abc import (
     VOTERFILE_FIELD_FOLDER,
     VOTERFILE_RECORD_FOLDER,
 )
-from ..pydantic_models.record import RecordBaseModel
 from ..funcs.csv_export import CSVExport
 from ..abcs.state_setup_abc import SetupStateABC
-from ..new_create_validator import CreateValidator
 
+from vep_validation_tools.funcs.create_individual_validator import CreateValidator
+from vep_validation_tools.pydantic_models.record import RecordBaseModel
+from vep_validation_tools.utils.readers import TomlReader
 
 class SetupState(SetupStateABC):
     pass

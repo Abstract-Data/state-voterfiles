@@ -7,21 +7,23 @@ from sqlmodel import Field as SQLModelField, JSON, Relationship, SQLModel, Sessi
 from sqlalchemy.orm import configure_mappers, joinedload
 from sqlalchemy.engine import Engine
 
-from .pydantic_models.model_bases import ValidatorBaseModel
-from .pydantic_models.fields.person_name import PersonName
-from .pydantic_models.fields.voter_registration import VoterRegistration
-from .pydantic_models.fields.district import District
-from .pydantic_models.fields.phone_number import ValidatedPhoneNumber
-from .pydantic_models.fields.vendor import VendorTags, VendorName
-from .pydantic_models.fields.vep_keys import VEPMatch
-from .pydantic_models.fields.data_source import DataSource
-from .pydantic_models.fields.x_elections import VotedInElection, ElectionTypeDetails
-from .pydantic_models.fields.input_data import InputData
-from .pydantic_models.fields.address import Address
-from .pydantic_models.record import RecordBaseModel
-from .pydantic_models.categories.district_list import FileDistrictList
-from .pydantic_models.categories.x_address_list import FileAddressList
-from .pydantic_models.categories.vendor_list import FileVendorNameList
+
+from election_utils.election_models import VotedInElection, ElectionTypeDetails
+
+from vep_validation_tools.pydantic_models.model_bases import ValidatorBaseModel
+from vep_validation_tools.pydantic_models.fields.person_name import PersonName
+from vep_validation_tools.pydantic_models.fields.voter_registration import VoterRegistration
+from vep_validation_tools.pydantic_models.fields.district import District
+from vep_validation_tools.pydantic_models.fields.phone_number import ValidatedPhoneNumber
+from vep_validation_tools.pydantic_models.fields.vendor import VendorTags, VendorName
+from vep_validation_tools.pydantic_models.fields.vep_keys import VEPMatch
+from vep_validation_tools.pydantic_models.fields.data_source import DataSource
+from vep_validation_tools.pydantic_models.fields.input_data import InputData
+from vep_validation_tools.pydantic_models.fields.address import Address
+from vep_validation_tools.pydantic_models.record import RecordBaseModel
+from vep_validation_tools.pydantic_models.categories.district_list import FileDistrictList
+from .pydantic_models.x_categories.x_address_list import FileAddressList
+from .pydantic_models.x_categories.vendor_list import FileVendorNameList
 
 
 class TableEnum(Enum):

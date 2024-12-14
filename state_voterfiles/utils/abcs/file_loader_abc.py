@@ -11,10 +11,12 @@ from rich.progress import track
 from pydantic import FilePath
 # import logfire
 
-from ..pydantic_models.rename_model import create_renamed_model
+from vep_validation_tools.pydantic_models.rename_model import create_renamed_model
+from vep_validation_tools.abcs.create_validator_abc import CreateValidatorABC
+from vep_validation_tools.utils.readers import TomlReader
+
 from ..abcs.folder_reader_abc import FolderReaderABC
-from ..abcs.create_validator_abc import CreateValidatorABC
-from ...utils.readers import TomlReader, read_csv
+from ...utils.readers import read_csv
 # from state_voterfiles.utils.logger import Logger
 
 # logfire.configure()

@@ -5,7 +5,9 @@ from typing import Dict, List, Optional
 from icecream import ic
 from functools import partial
 
-from ..readers import TomlReader, read_csv
+from vep_validation_tools.utils.readers import TomlReader
+
+from ..readers import read_csv
 from ..abcs.file_loader_abc import create_headers_list, VOTERFILE_FIELD_FOLDER, VOTERFILE_RECORD_FOLDER
 
 
